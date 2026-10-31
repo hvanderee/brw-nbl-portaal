@@ -776,8 +776,10 @@ function widgets(){
       ? '<p class="uitleg" style="margin:16px 0 8px">Kwetsbaarste momenten komende periode</p><ul class="vensters">'+vs.slice(0,5).map(([d,a,b,lo])=>`<li><span>${d} ${String(a).padStart(2,"0")}:00–${String(b).padStart(2,"0")}:00</span><span class="pct">${lo}%</span></li>`).join("")+'</ul>'
       : '<p class="geen" style="margin-top:16px"><b>Geen kwetsbare momenten.</b> De TS is de hele periode volledig bezet.</p>';
   }
-  if(B&&B.dekking_per_rol&&B.dekking_per_rol.length)
-    balken("perRol",B.dekking_per_rol.map(r=>[r.label,r.pct]),{smalIndex:0,suffix:"%"});
+  if(B&&B.dekking_per_rol&&B.dekking_per_rol.length){
+    const _r=B.dekking_per_rol,_mn=Math.min(..._r.map(x=>x.pct)),_mx=Math.max(..._r.map(x=>x.pct));
+    balken("perRol",_r.map(r=>[r.label,r.pct]),{smalIndex:(_mn<_mx?0:-1),suffix:"%"});
+  }
 
   /* Uitrukken (opkomstregister) */
   if(D.dagdeel) balken("dagdeel",D.dagdeel);
