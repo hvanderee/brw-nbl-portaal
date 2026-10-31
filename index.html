@@ -93,6 +93,8 @@ main.wrap{padding-top:28px;padding-bottom:48px}
 .st-kop b{display:block;font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
 .st-kop small{color:var(--zacht);font-size:13px}
 .functies{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.overig{grid-column:1/-1;font-size:13px;color:var(--zacht);border-top:1px solid var(--lijn);padding-top:14px}
+.oud{color:var(--rood);font-weight:600}
 .functie .nm{font-size:13px;color:var(--zacht)}
 .functie .vl{font-size:24px;font-weight:600;margin:2px 0 8px}
 .functie .vl span{font-size:14px;font-weight:400;color:var(--dim)}
@@ -210,7 +212,7 @@ footer .bnl{color:var(--zacht)}
   </header>
 
   <main class="wrap" role="tabpanel">
-    <div class="banier" id="banier" hidden><span><b>Voorbeelddata.</b> Deze cijfers zijn fictief en laten alleen de opbouw zien. Zodra de koppelingen er zijn, staan hier de echte gegevens.</span></div>
+    <div class="banier" id="banier" hidden><span id="banierTekst"><b>Voorbeelddata.</b> Deze cijfers zijn fictief en laten alleen de opbouw zien. Zodra de koppelingen er zijn, staan hier de echte gegevens.</span></div>
 
     <section class="sectie">
       <div class="sk"><h2>Status nu</h2><small id="bijgewerkt"></small></div>
@@ -223,7 +225,7 @@ footer .bnl{color:var(--zacht)}
     </section>
 
     <section class="sectie">
-      <div class="sk"><h2>Beschikbaarheid</h2><small>Gemiddelde afgelopen 3 maanden</small></div>
+      <div class="sk"><h2>Beschikbaarheid</h2><small id="hmBron">Gemiddelde afgelopen 3 maanden</small></div>
       <div class="kaart">
         <h3>TS volledig bezet, per weekdag en uur</h3>
         <p class="uitleg">Hoe donkerder, hoe vaker er genoeg mensen beschikbaar waren. Lichte vakken zijn de kwetsbare momenten.</p>
@@ -580,6 +582,7 @@ window.NBL_DATA = {
 };
 </script>
 <script src="data.js"></script>
+<script src="bezetting.js"></script>
 <script>
 /* Toegang: alleen een hash van de pincode staat hier.
    Pincode wijzigen? Bereken sha256("nbl1852:" + nieuwe code) en vervang PIN_HASH. */
@@ -637,26 +640,34 @@ function teken(){
   if(D.bijgewerkt) $("#bijgewerkt").textContent="Bijgewerkt "+new Date(D.bijgewerkt).toLocaleString("nl-NL",{day:"numeric",month:"long",hour:"2-digit",minute:"2-digit"});
   $("#jaarlabel").textContent=D.jaar+" tot en met vandaag";
 
-  const norm=D.norm.bezetting, nu=D.nu; let vol=true, f="";
-  for(const k in norm){ const n=nu[k]||0, ok=n>=norm[k]; if(!ok) vol=false;
-    f+=`<div class="functie ${ok?"":"tekort"}"><div class="nm">${k}</div><div class="vl">${n} <span>/ ${norm[k]} nodig</span></div><div class="balk"><i style="width:${Math.min(100,n/norm[k]*100)}%"></i></div></div>`; }
-  $("#status").innerHTML=`<div class="st-kop"><div class="st-icoon ${vol?"ok":"niet"}">${vol?ICOON_OK:ICOON_NIET}</div><div><b>${vol?"TS volledig bezet":"TS niet volledig bezet"}</b><small>Beschikbaarheid volgens Pre-Com</small></div></div><div class="functies">${f}</div>`;
+  const B=window.NBL_BEZETTING&&window.NBL_BEZETTING.functies?window.NBL_BEZETTING:null;
+  if(B){ $("#banierTekst").innerHTML="<b>Deels voorbeelddata.</b> Bezetting en beschikbaarheid komen live uit Pre-Com. Uitrukken en uitruktijden zijn nog fictief.";
+    const tb=new Date(B.bijgewerkt), oud=(Date.now()-tb)>60*60*1000;
+    $("#bijgewerkt").innerHTML=(oud?'<span class="oud">Niet actueel · </span>':'')+"Pre-Com · bijgewerkt "+tb.toLocaleString("nl-NL",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+    $("#hmBron").textContent="Afgelopen "+B.periode_dagen+" dagen · bron Pre-Com"; }
+  const fl=B?B.functies.filter(x=>x.nodig>0).map(x=>({nm:x.label,n:x.beschikbaar,nodig:x.nodig}))
+            :Object.keys(D.norm.bezetting).map(k=>({nm:k,n:D.nu[k]||0,nodig:D.norm.bezetting[k]}));
+  let vol=true, f="";
+  for(const x of fl){ const ok=x.n>=x.nodig; if(!ok) vol=false;
+    f+=`<div class="functie ${ok?"":"tekort"}"><div class="nm">${x.nm}</div><div class="vl">${x.n} <span>/ ${x.nodig} nodig</span></div><div class="balk"><i style="width:${Math.min(100,x.n/x.nodig*100)}%"></i></div></div>`; }
+  const overig=B?B.functies.filter(x=>x.nodig===0).map(x=>`${x.label} <b>${x.beschikbaar}</b>`).join(" · "):"";
+  $("#status").innerHTML=`<div class="st-kop"><div class="st-icoon ${vol?"ok":"niet"}">${vol?ICOON_OK:ICOON_NIET}</div><div><b>${vol?"TS volledig bezet":"TS niet volledig bezet"}</b><small>Beschikbaarheid volgens Pre-Com</small></div></div><div class="functies">${f}</div>${overig?`<div class="overig">Ook beschikbaar: ${overig}</div>`:""}`;
 
   const dj=D.uitrukken_per_maand.dit_jaar, vj=D.uitrukken_per_maand.vorig_jaar, n=dj.filter(v=>v!=null).length;
   const tot=dj.reduce((a,v)=>a+(v||0),0), vtot=vj.slice(0,n).reduce((a,v)=>a+v,0);
   const tijden=D.uitruktijd_per_maand.filter(v=>v!=null), gem=tijden.reduce((a,v)=>a+v,0)/tijden.length;
   const kpis=[["Uitrukken "+D.jaar,tot,`${tot>=vtot?"+":"−"}${Math.abs(tot-vtot)} t.o.v. zelfde periode ${D.jaar-1}`],
     ["Gemiddelde uitruktijd",fmtMin(gem),`Streefwaarde ${fmtMin(D.norm.uitruktijd_min)}`],
-    ["TS bezet",D.beschikbaarheid_30d_pct+"%","Van de tijd, afgelopen 30 dagen"],
+    ["TS bezet",(B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%",B?`Van de tijd, afgelopen ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"],
     ["Maanden binnen norm",tijden.filter(v=>v<=D.norm.uitruktijd_min).length+" van "+tijden.length,"Gemiddelde uitruktijd ≤ streefwaarde"]];
   $("#kpis").innerHTML=kpis.map(k=>`<div class="kaart kpi"><div class="label">${k[0]}</div><div class="waarde">${k[1]}</div><div class="sub">${k[2]}</div></div>`).join("");
 
-  const alle=D.heatmap.flat(), lo=Math.min(...alle);
+  const HM=B&&B.heatmap?B.heatmap:D.heatmap, alle=HM.flat().filter(v=>v!=null), lo=Math.min(99,...alle);
   $("#hmMin").textContent=lo+"%";
   const kleur=v=>{const t=(v-lo)/(100-lo||1); const a=[233,234,244], b=[38,44,143]; return `rgb(${a.map((x,i)=>Math.round(x+(b[i]-x)*t)).join(",")})`};
   let h='<div></div>'; for(let u=0;u<24;u++) h+=`<div class="u">${u}</div>`;
-  D.heatmap.forEach((rij,d)=>{ h+=`<div class="d">${DAG[d]}</div>`;
-    rij.forEach((v,u)=>h+=`<div class="c" style="background:${kleur(v)}" data-t="${DAG[d]} ${String(u).padStart(2,"0")}:00–${String(u+1).padStart(2,"0")}:00 · ${v}% volledig bezet"></div>`); });
+  HM.forEach((rij,d)=>{ h+=`<div class="d">${DAG[d]}</div>`;
+    rij.forEach((v,u)=>h+=v==null?`<div class="c" style="background:#f0eeea"></div>`:`<div class="c" style="background:${kleur(v)}" data-t="${DAG[d]} ${String(u).padStart(2,"0")}:00–${String(u+1).padStart(2,"0")}:00 · ${v}% volledig bezet"></div>`); });
   const hm=$("#heatmap"); hm.innerHTML=h;
   hm.addEventListener("mousemove",e=>{const c=e.target.closest(".c"); c?toonTip(e,c.dataset.t):verberg()}); hm.addEventListener("mouseleave",verberg);
 

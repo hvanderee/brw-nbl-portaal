@@ -1,0 +1,35 @@
+name: Bezetting uit Pre-Com
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # elk kwartier (GitHub kan enkele minuten later starten)
+  workflow_dispatch: {}       # handmatig starten via het tabblad Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bezetting
+  cancel-in-progress: true
+
+jobs:
+  bijwerken:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Bezetting ophalen
+        env:
+          PRECOM_USER: ${{ secrets.PRECOM_USER }}
+          PRECOM_PASS: ${{ secrets.PRECOM_PASS }}
+        run: python scripts/precom_bezetting.py
+      - name: Opslaan
+        run: |
+          git config user.name "bezetting-bot"
+          git config user.email "bezetting-bot@users.noreply.github.com"
+          git add bezetting.js
+          git diff --cached --quiet || (git commit -m "Bezetting bijgewerkt" && git push)
