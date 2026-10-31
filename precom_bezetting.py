@@ -17,6 +17,8 @@ import requests
 BASIS = "https://portal.pre-com.nl/PreCom/"
 TZ = ZoneInfo("Europe/Amsterdam")
 GROEP = int(os.environ.get("PRECOM_GROUP_ID", "4915"))
+NODE = os.environ.get("PRECOM_NODE_ID", "2123")      # post Nieuw-Beijerland in de Pre-Com-boom
+MODULE = os.environ.get("PRECOM_MODULE_ID", "79")    # module 'Bezetting'
 DAGEN = int(os.environ.get("PRECOM_DAGEN", "28"))
 UIT = os.environ.get("PRECOM_OUTPUT", "bezetting.js")
 
@@ -56,12 +58,23 @@ def inloggen(s):
         fout(f"Onverwacht antwoord bij inloggen (HTTP {r.status_code}).")
     if not (j.get("Succesfully") or j.get("Successfully")):
         fout("Inloggen mislukt: " + str(j.get("Message") or "controleer gebruikersnaam/wachtwoord."))
+    # Pre-Com onthoudt per sessie welke post en module geselecteerd zijn; zonder deze stap geeft
+    # het bezettingsoverzicht 403.
+    xhr = {"X-Requested-With": "XMLHttpRequest", "Referer": BASIS}
+    s.get(BASIS, timeout=30)
+    for pad in (f"Navigation/NavigateToNode?nodeId={NODE}", f"Navigation/NavigateToModule?moduleId={MODULE}",
+                "Occupancy/Overview", f"Occupancy/GetVehicles?groupId={GROEP}"):
+        r = s.get(BASIS + pad, headers=xhr, timeout=30)
+        if r.status_code >= 400:
+            fout(f"Stap {pad.split('?')[0]} gaf HTTP {r.status_code}.")
 
 
 def bezetting(s, datums):
     data = [("groupId", str(GROEP))] + [("selectedDates[]", d.strftime("%Y-%m-%d")) for d in datums]
     r = s.post(BASIS + "Occupancy/GetOccupancy", data=data, timeout=60,
-               headers={"X-Requested-With": "XMLHttpRequest"})
+               headers={"X-Requested-With": "XMLHttpRequest", "Referer": BASIS})
+    if r.status_code == 403:
+        fout("Pre-Com weigert het bezettingsoverzicht (403). Controleer PRECOM_NODE_ID/PRECOM_MODULE_ID.")
     r.raise_for_status()
     if "json" not in r.headers.get("Content-Type", ""):
         fout("Geen JSON terug van Pre-Com (sessie verlopen of geen rechten op deze groep?).")
