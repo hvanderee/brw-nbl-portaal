@@ -99,11 +99,11 @@ def main():
                  "nodig": t["Necessary"], "totaal": t["Configured"]} for t in totals]
     ts = {f["id"]: f["nodig"] for f in functies if f["nodig"] > 0}
 
-    # 2. Historie: per kwartier tellen of de TS volledig bezet kon uitrukken
-    verleden = [vandaag - timedelta(days=i) for i in range(DAGEN, 0, -1)]
+    # 2. Vooruitblik: per kwartier of de TS de komende periode volledig bezet kan uitrukken
+    toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
     ok = [[0] * 24 for _ in range(7)]; tot = [[0] * 24 for _ in range(7)]
-    for i in range(0, len(verleden), 7):
-        blok = bezetting(s, verleden[i:i + 7])
+    for i in range(0, len(toekomst), 7):
+        blok = bezetting(s, toekomst[i:i + 7])
         per_dag = {}
         for item in blok.get("AvailablePeople") or []:
             fid, dag = item.get("ServiceFunctionID"), item.get("DateOfDay")
