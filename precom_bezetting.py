@@ -100,8 +100,10 @@ def main():
     ts = {f["id"]: f["nodig"] for f in functies if f["nodig"] > 0}
 
     # 2. Vooruitblik: per kwartier of de TS de komende periode volledig bezet kan uitrukken
+    labels = {f["id"]: f["label"] for f in functies}
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
     ok = [[0] * 24 for _ in range(7)]; tot = [[0] * 24 for _ in range(7)]
+    ok_f = {fid: 0 for fid in ts}; n_slots = 0            # per functie: aantal kwartieren voldoende bezet
     for i in range(0, len(toekomst), 7):
         blok = bezetting(s, toekomst[i:i + 7])
         per_dag = {}
@@ -114,8 +116,16 @@ def main():
             for slot in range(96):
                 bezet = all(f.get(fid, {}).get(slot, 0) >= nodig for fid, nodig in ts.items())
                 tot[wd][slot // 4] += 1; ok[wd][slot // 4] += bezet
+                n_slots += 1
+                for fid, nodig in ts.items():
+                    if f.get(fid, {}).get(slot, 0) >= nodig:
+                        ok_f[fid] += 1
     heatmap = [[round(100 * ok[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
     alle_ok = sum(map(sum, ok)); alle = sum(map(sum, tot))
+    # Dekking per functie over de hele periode; de laagste is de 'smalste schakel'.
+    dekking_per_rol = sorted(
+        ({"label": labels.get(fid, str(fid)), "pct": round(100 * ok_f[fid] / n_slots)} for fid in ts),
+        key=lambda r: r["pct"]) if n_slots else []
 
     uit = {
         "bron": "Pre-Com",
@@ -124,6 +134,7 @@ def main():
         "ts_bezet_pct": round(100 * alle_ok / alle) if alle else None,
         "periode_dagen": DAGEN,
         "heatmap": heatmap,
+        "dekking_per_rol": dekking_per_rol,
     }
     with open(UIT, "w", encoding="utf-8") as fh:
         fh.write("/* Automatisch gegenereerd uit Pre-Com — alleen aantallen, geen namen. Niet handmatig bewerken. */\n")
