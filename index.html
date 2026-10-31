@@ -75,7 +75,7 @@ header{background:var(--ink);color:var(--white);border-bottom:3px solid var(--re
 .tabs button{background:none;border:0;padding:14px 0;font-size:15px;font-weight:600;color:#AEB4BB;border-bottom:3px solid transparent;cursor:pointer;margin-bottom:-1px}
 .tabs button[aria-selected="true"]{color:var(--white);border-bottom-color:var(--red)}
 
-main{padding-top:40px;padding-bottom:64px}
+main{padding-top:64px;padding-bottom:64px}
 .banier{display:flex;gap:12px;align-items:flex-start;background:var(--white);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:14px 18px;font-size:14px;color:var(--slate);margin-bottom:8px}
 .banier b{color:var(--ink)}
 .sectie{margin-top:48px}
@@ -226,10 +226,10 @@ footer .spoed{color:var(--ink);font-weight:500}
     </section>
 
     <section class="sectie">
-      <div class="sk"><h2>Beschikbaarheid</h2><small id="hmBron">Gemiddelde afgelopen 3 maanden</small></div>
+      <div class="sk"><h2>Beschikbaarheid</h2><small id="hmBron">Verwachte beschikbaarheid, komende weken</small></div>
       <div class="kaart">
         <h3>TS volledig bezet, per weekdag en uur</h3>
-        <p class="uitleg">Hoe donkerder het vak, hoe vaker er genoeg mensen beschikbaar waren. Lichte vakken zijn de kwetsbare momenten.</p>
+        <p class="uitleg">Hoe donkerder het vak, hoe vaker er de komende weken genoeg mensen beschikbaar zijn. Lichte vakken zijn de kwetsbare momenten.</p>
         <div class="hm" id="heatmap"></div>
         <div class="schaal"><span id="hmMin"></span><div class="grad"></div><span>100% volledig bezet</span></div>
       </div>
@@ -683,7 +683,7 @@ function teken(){
   if(B){
     const tb=new Date(B.bijgewerkt), oud=(Date.now()-tb)>60*60*1000;
     $("#bijgewerkt").innerHTML=(oud?'<span class="oud">Niet actueel · </span>':'')+"Pre-Com · bijgewerkt "+tb.toLocaleString("nl-NL",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
-    $("#hmBron").textContent="Afgelopen "+B.periode_dagen+" dagen · bron Pre-Com"; }
+    $("#hmBron").textContent="Komende "+B.periode_dagen+" dagen · bron Pre-Com"; }
   const fl=B?B.functies.filter(x=>x.nodig>0).map(x=>({nm:x.label,n:x.beschikbaar,nodig:x.nodig}))
             :Object.keys(D.norm.bezetting).map(k=>({nm:k,n:D.nu[k]||0,nodig:D.norm.bezetting[k]}));
   let vol=true, f="";
@@ -697,7 +697,7 @@ function teken(){
   const tijden=D.uitruktijd_per_maand.filter(v=>v!=null), gem=tijden.reduce((a,v)=>a+v,0)/tijden.length;
   const kpis=[["Uitrukken "+D.jaar,tot,`${tot>=vtot?"+":"−"}${Math.abs(tot-vtot)} t.o.v. zelfde periode ${D.jaar-1}`],
     ["Gemiddelde uitruktijd",fmtMin(gem),`Streefwaarde ${fmtMin(D.norm.uitruktijd_min)}`],
-    ["TS bezet",(B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%",B?`Van de tijd, afgelopen ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"],
+    ["TS bezet",(B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%",B?`Verwacht, komende ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"],
     ["Maanden binnen norm",tijden.filter(v=>v<=D.norm.uitruktijd_min).length+" van "+tijden.length,"Gemiddelde uitruktijd ≤ streefwaarde"]];
   $("#kpis").innerHTML=kpis.map(k=>`<div class="kaart kpi"><div class="label">${k[0]}</div><div class="waarde">${k[1]}</div><div class="sub">${k[2]}</div></div>`).join("");
 
