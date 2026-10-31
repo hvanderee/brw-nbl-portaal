@@ -140,6 +140,17 @@ td.r,th.r{text-align:right;padding-right:0}
 .type .rij{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
 .type .rij b{font-family:var(--font-display);font-weight:700;font-size:17px}
 .type .balk i{background:var(--graphite)}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tegel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+.tegel .nm{font-size:13px;color:var(--slate);line-height:1.35}
+.tegel .vl{font-family:var(--font-display);font-weight:700;font-size:32px;line-height:1.05;margin:6px 0 10px}
+.tegel .vl span{font-size:14px;font-weight:400;color:var(--dim);font-family:var(--font-body)}
+.vlag{display:inline-block;font-size:11px;font-weight:700;color:var(--red-accessible);border:1px solid var(--red-accessible);border-radius:5px;padding:1px 7px;margin-left:8px;vertical-align:1px}
+.vensters{list-style:none;margin:0;padding:0;font-size:14px}
+.vensters li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.vensters li:last-child{border-bottom:0}
+.vensters .pct{color:var(--red-accessible);font-weight:600}
+.geen{font-size:14px;color:var(--slate)} .geen b{color:var(--ink)}
 
 footer{border-top:1px solid var(--line);background:var(--white);margin-top:8px}
 footer .wrap{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;min-height:64px;padding-top:16px;padding-bottom:16px;font-size:13px;color:var(--slate)}
@@ -233,6 +244,15 @@ footer .spoed{color:var(--ink);font-weight:500}
         <div class="hm" id="heatmap"></div>
         <div class="schaal"><span id="hmMin"></span><div class="grad"></div><span>100% volledig bezet</span></div>
       </div>
+      <div class="rooster r2g" style="margin-top:20px">
+        <div class="kaart"><h3>Dekking dag en nacht</h3>
+          <p class="uitleg">Aandeel van de tijd dat de TS volledig bezet is, komende periode. Dag = 08–18 uur.</p>
+          <div class="duo" id="dagnacht"></div>
+          <div id="vensters"></div></div>
+        <div class="kaart"><h3>Dekking per functie</h3>
+          <p class="uitleg">Hoe vaak elke functie de komende periode bezet is. De laagste is de smalste schakel.</p>
+          <div class="typen" id="perRol"></div></div>
+      </div>
     </section>
 
     <section class="sectie">
@@ -249,6 +269,14 @@ footer .spoed{color:var(--ink);font-weight:500}
         <div class="kaart"><h3>Uitrukken per jaar</h3><p class="uitleg">Totaal aantal uitrukken per kalenderjaar. 2026 loopt tot en met oktober.</p>
           <svg id="grafJaar" width="100%" height="220" role="img" aria-label="Uitrukken per jaar"></svg></div>
         <div class="kaart"><h3>Meldingstypen</h3><p class="uitleg">Aantal uitrukken dit jaar, naar type.</p><div class="typen" id="typen"></div></div>
+      </div>
+      <div class="rooster r2g" style="margin-top:20px">
+        <div class="kaart"><h3>Uitrukken per dagdeel</h3><p class="uitleg">Wanneer op de dag de uitrukken vallen, dit jaar.</p><div class="typen" id="dagdeel"></div></div>
+        <div class="kaart"><h3>Spoedbeeld</h3><p class="uitleg">Verdeling naar prioriteit, dit jaar. P1 is spoed.</p><div class="typen" id="prioriteit"></div></div>
+      </div>
+      <div class="rooster r2g" style="margin-top:20px">
+        <div class="kaart"><h3>Opkomst per uitruk</h3><p class="uitleg">Hoeveel mensen gemiddeld op de TS meegaan. Norm is 6.</p><div id="opkomst"></div></div>
+        <div class="kaart"><h3>Spreiding uitruktijd</h3><p class="uitleg">Niet alleen het gemiddelde — hoe betrouwbaar is de opkomsttijd?</p><div id="spreiding"></div></div>
       </div>
       <div style="margin-top:20px">
         <div class="kaart"><h3>Recente uitrukken</h3><p class="uitleg">De laatste uitrukken, met uitruktijd en bezetting op de TS. Boven de streefwaarde is rood gemarkeerd.</p>
@@ -718,6 +746,52 @@ function teken(){
 
   const ty=[...D.meldingstypen].sort((a,b)=>b[1]-a[1]), mx=ty[0][1];
   $("#typen").innerHTML=ty.map(([t,v])=>`<div class="type"><div class="rij"><span>${t}</span><b>${v}</b></div><div class="balk"><i style="width:${v/mx*100}%"></i></div></div>`).join("");
+
+  widgets();
+}
+
+function balken(id,rows,opt){
+  const box=$("#"+id); if(!box||!rows||!rows.length) return;
+  const mx=Math.max(...rows.map(r=>r[1]))||1, suf=(opt&&opt.suffix)||"";
+  box.innerHTML=rows.map(([t,v],i)=>{const smal=opt&&opt.smalIndex===i;
+    return `<div class="type"><div class="rij"><span>${t}${smal?'<span class="vlag">smalste schakel</span>':''}</span><b>${v}${suf}</b></div><div class="balk"><i style="width:${Math.max(2,v/mx*100)}%${smal?';background:var(--red-accessible)':''}"></i></div></div>`;
+  }).join("");
+}
+function widgets(){
+  const B=window.NBL_BEZETTING||null;
+  /* Paraatheid (Pre-Com, vooruitkijkend) */
+  if(B&&B.heatmap){
+    let dOk=0,dN=0,nOk=0,nN=0;
+    B.heatmap.forEach(rij=>rij.forEach((v,u)=>{if(v==null)return; if(u>=8&&u<18){dN++;dOk+=v;}else{nN++;nOk+=v;}}));
+    const dag=dN?Math.round(dOk/dN):null, nacht=nN?Math.round(nOk/nN):null, dn=$("#dagnacht");
+    if(dn) dn.innerHTML=[["Overdag","08–18 uur",dag],["'s Nachts","18–08 uur",nacht]].map(([t,s,v])=>
+      `<div class="tegel"><div class="nm">${t} · ${s}</div><div class="vl">${v==null?"–":v+"%"}</div><div class="balk"><i style="width:${v||0}%"></i></div></div>`).join("");
+    const vs=[];
+    B.heatmap.forEach((rij,d)=>{let st=null;
+      for(let u=0;u<=24;u++){const bad=u<24&&rij[u]!=null&&rij[u]<100;
+        if(bad&&st==null)st=u; else if(!bad&&st!=null){const seg=rij.slice(st,u).filter(x=>x!=null);vs.push([DAG[d],st,u,Math.min(...seg)]);st=null;}}});
+    vs.sort((a,b)=>a[3]-b[3]);
+    const vb=$("#vensters");
+    if(vb) vb.innerHTML = vs.length
+      ? '<p class="uitleg" style="margin:16px 0 8px">Kwetsbaarste momenten komende periode</p><ul class="vensters">'+vs.slice(0,5).map(([d,a,b,lo])=>`<li><span>${d} ${String(a).padStart(2,"0")}:00–${String(b).padStart(2,"0")}:00</span><span class="pct">${lo}%</span></li>`).join("")+'</ul>'
+      : '<p class="geen" style="margin-top:16px"><b>Geen kwetsbare momenten.</b> De TS is de hele periode volledig bezet.</p>';
+  }
+  if(B&&B.dekking_per_rol&&B.dekking_per_rol.length)
+    balken("perRol",B.dekking_per_rol.map(r=>[r.label,r.pct]),{smalIndex:0,suffix:"%"});
+
+  /* Uitrukken (opkomstregister) */
+  if(D.dagdeel) balken("dagdeel",D.dagdeel);
+  if(D.prioriteit) balken("prioriteit",D.prioriteit);
+  if(D.opkomst){const o=D.opkomst, box=$("#opkomst");
+    if(box){const mx=Math.max(...o.verdeling.map(r=>r[1]))||1;
+      box.innerHTML=`<div class="tegel" style="margin-bottom:16px"><div class="nm">Gemiddelde opkomst op de TS</div><div class="vl">${String(o.gemiddeld).replace(".",",")} <span>/ ${o.norm} norm</span></div><div class="balk"><i style="width:${Math.min(100,o.gemiddeld/o.norm*100)}%"></i></div></div>`
+        +`<p class="uitleg" style="margin:0 0 8px">Aantal man op de TS per uitruk</p>`
+        +o.verdeling.map(([k,v])=>`<div class="type"><div class="rij"><span>${k} man</span><b>${v}×</b></div><div class="balk"><i style="width:${Math.max(2,v/mx*100)}%"></i></div></div>`).join("");}}
+  if(D.uitruktijd_spreiding){const sp=D.uitruktijd_spreiding, box=$("#spreiding");
+    if(box){const mx=Math.max(...sp.histogram.map(r=>r[1]))||1;
+      box.innerHTML=`<div class="duo" style="margin-bottom:16px"><div class="tegel"><div class="nm">Helft binnen (mediaan)</div><div class="vl">${sp.mediaan_tekst}</div></div><div class="tegel"><div class="nm">9 op 10 binnen (p90)</div><div class="vl">${sp.p90_tekst}</div></div></div>`
+        +`<p class="uitleg" style="margin:0 0 8px">Verdeling van ${sp.n} uitrukken · ${sp.binnen_streef_pct}% binnen de streefwaarde (${fmtMin(sp.streef)})</p>`
+        +sp.histogram.map(([k,v])=>{const goed=k==="< 4 min";return `<div class="type"><div class="rij"><span>${k}</span><b>${v}×</b></div><div class="balk"><i style="width:${Math.max(2,v/mx*100)}%${goed?';background:var(--ink)':''}"></i></div></div>`}).join("");}}
 }
 
 function grafJaar(){
