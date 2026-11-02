@@ -128,6 +128,82 @@ td .em{color:var(--slate);font-size:13px}
   .a-paneel .voet{display:none}
   .veld2,.checks{grid-template-columns:1fr}
 }
+
+/* ===== Dashboard (paraatheid + uitrukken) — gescoped onder #dash ===== */
+#dash .banier{display:flex;gap:12px;align-items:flex-start;background:var(--white);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:14px 18px;font-size:14px;color:var(--slate);margin-bottom:8px}
+#dash .banier b{color:var(--ink)}
+#dash .sectie{margin-top:48px}
+#dash .sectie:first-of-type{margin-top:0}
+#dash .sk{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+#dash .sk h2{font-size:26px;text-transform:uppercase;letter-spacing:.02em}
+#dash .sk small{font-size:13px;color:var(--slate)}
+#dash .rooster{display:grid;gap:20px}
+#dash .r4{grid-template-columns:repeat(4,1fr)} #dash .r2{grid-template-columns:3fr 2fr} #dash .r2g{grid-template-columns:1fr 1fr}
+#dash .kaart{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:22px 24px}
+#dash .kaart h3{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.01em}
+#dash .kaart .uitleg{margin:4px 0 20px;font-size:13px;color:var(--slate);line-height:1.5}
+#dash .status{display:grid;grid-template-columns:minmax(230px,1fr) 2fr;gap:36px;align-items:center}
+#dash .st-kop{display:flex;align-items:center;gap:16px}
+#dash .st-icoon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;flex:none}
+#dash .st-icoon.ok{background:var(--surface);color:var(--ink)} #dash .st-icoon.niet{background:#FBE7E3;color:var(--red-accessible)}
+#dash .st-kop b{display:block;font-family:var(--font-display);font-weight:700;font-size:28px;line-height:1.05}
+#dash .st-kop small{color:var(--slate);font-size:13px}
+#dash .functies{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+#dash .functie .nm{font-size:13px;color:var(--slate)}
+#dash .functie .vl{font-family:var(--font-display);font-size:26px;font-weight:700;margin:2px 0 8px}
+#dash .functie .vl span{font-size:14px;font-weight:400;color:var(--dim);font-family:var(--font-body)}
+#dash .balk{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+#dash .balk i{display:block;height:100%;background:var(--ink);border-radius:3px}
+#dash .functie.tekort .balk i{background:var(--red-accessible)} #dash .functie.tekort .vl{color:var(--red-accessible)}
+#dash .overig{grid-column:1/-1;font-size:13px;color:var(--slate);border-top:1px solid var(--line);padding-top:16px}
+#dash .overig b{color:var(--ink)}
+#dash .kpi .label{font-size:13px;color:var(--slate)}
+#dash .kpi .waarde{font-family:var(--font-display);font-weight:700;font-size:44px;line-height:1.05;margin:8px 0 4px}
+#dash .kpi .sub{font-size:12px;color:var(--slate);line-height:1.45}
+#dash .oud{color:var(--red-accessible);font-weight:600}
+#dash .hm{display:grid;grid-template-columns:34px repeat(24,minmax(0,1fr));gap:3px;font-size:11px;color:var(--dim)}
+#dash .hm .c{height:26px;border-radius:3px}
+#dash .hm .c:hover{outline:2px solid var(--ink);outline-offset:1px}
+#dash .hm .d{display:flex;align-items:center;color:var(--slate)}
+#dash .hm .u{text-align:center}
+#dash .schaal{display:flex;align-items:center;gap:10px;margin-top:16px;font-size:12px;color:var(--slate)}
+#dash .schaal .grad{width:200px;height:8px;border-radius:4px;background:linear-gradient(90deg,#EDEFF0,var(--ink))}
+#dash svg text{font-family:var(--font-body);fill:var(--dim);font-size:11px}
+#dash .legenda{display:flex;gap:18px;font-size:12px;color:var(--slate);margin:4px 0 16px}
+#dash .legenda i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+#dash table{width:100%;border-collapse:collapse;font-size:14px}
+#dash th{text-align:left;font-size:12px;font-weight:600;color:var(--slate);padding:0 10px 10px 0;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.03em}
+#dash td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line);vertical-align:top}
+#dash tr:last-child td{border-bottom:0}
+#dash td.r,#dash th.r{text-align:right;padding-right:0}
+#dash .prio{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--line);color:var(--slate)}
+#dash .prio.P1{border-color:var(--red-accessible);color:var(--red-accessible)}
+#dash .boven{color:var(--red-accessible);font-weight:600}
+#dash .dim{color:var(--dim)}
+#dash .tabelwrap{overflow-x:auto}
+#dash .typen{display:grid;gap:16px}
+#dash .type .rij{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
+#dash .type .rij b{font-family:var(--font-display);font-weight:700;font-size:17px}
+#dash .type .balk i{background:var(--graphite)}
+#dash .duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#dash .tegel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+#dash .tegel .nm{font-size:13px;color:var(--slate);line-height:1.35}
+#dash .tegel .vl{font-family:var(--font-display);font-weight:700;font-size:32px;line-height:1.05;margin:6px 0 10px}
+#dash .tegel .vl span{font-size:14px;font-weight:400;color:var(--dim);font-family:var(--font-body)}
+#dash .vlag{display:inline-block;font-size:11px;font-weight:700;color:var(--red-accessible);border:1px solid var(--red-accessible);border-radius:5px;padding:1px 7px;margin-left:8px;vertical-align:1px}
+#dash .vensters{list-style:none;margin:0;padding:0;font-size:14px}
+#dash .vensters li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+#dash .vensters li:last-child{border-bottom:0}
+#dash .vensters .pct{color:var(--red-accessible);font-weight:600}
+#dash .geen{font-size:14px;color:var(--slate)} #dash .geen b{color:var(--ink)}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--white);font-size:12px;font-weight:500;padding:7px 10px;border-radius:6px;z-index:50;white-space:nowrap}
+@media (max-width:1000px){#dash .r4{grid-template-columns:repeat(2,1fr)} #dash .r2,#dash .r2g{grid-template-columns:1fr} #dash .status{grid-template-columns:1fr;gap:24px}}
+@media (max-width:600px){
+  #dash .functies{grid-template-columns:1fr;gap:16px} #dash .kpi .waarde{font-size:36px}
+  #dash .sk h2{font-size:22px}
+  #dash .hm{grid-template-columns:24px repeat(24,minmax(0,1fr));gap:1px;font-size:9px} #dash .hm .c{height:15px;border-radius:2px}
+  #dash .hm .u:nth-child(odd){visibility:hidden}
+}
 </style>
 </head>
 <body>
