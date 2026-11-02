@@ -204,6 +204,17 @@ td .em{color:var(--slate);font-size:13px}
   #dash .hm{grid-template-columns:24px repeat(24,minmax(0,1fr));gap:1px;font-size:9px} #dash .hm .c{height:15px;border-radius:2px}
   #dash .hm .u:nth-child(odd){visibility:hidden}
 }
+
+/* ===== Mobiele header + beheer ===== */
+@media (max-width:600px){
+  .wrap{padding:0 16px}
+  .kop{gap:10px;min-height:58px;flex-wrap:nowrap}
+  .kop b{font-size:18px;white-space:nowrap}
+  .kop .wie{display:none}
+  .kop .knop-licht{height:34px;padding:0 11px;font-size:13px}
+  #view-beheer .sk{flex-wrap:wrap}
+  #view-beheer .sk .knop-klein{height:36px}
+}
 </style>
 </head>
 <body>
