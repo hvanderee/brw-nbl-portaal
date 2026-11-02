@@ -2,7 +2,7 @@ name: Bezetting uit Pre-Com
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # elk kwartier (GitHub kan enkele minuten later starten)
+    - cron: "*/5 * * * *"    # elke 5 min (GitHub-minimum; geplande runs kunnen alsnog iets later starten)
   workflow_dispatch: {}       # handmatig starten via het tabblad Actions
 
 permissions:
