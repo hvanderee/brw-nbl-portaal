@@ -64,7 +64,7 @@ function teken(){
     ["Uitrukken "+D.jaar, tot, `${tot>=vtot?"+":"−"}${Math.abs(tot-vtot)} t.o.v. zelfde periode ${D.jaar-1}`],
     ["Gem. uitruktijd (P1)", fmtMin(gem), `P1-streefwaarde ${fmtMin(D.norm.uitruktijd_min)} · excl. reanimatie`],
     (nt
-      ? ["Bezetting nu", `<span style="color:${TIERKLEUR[nt.tier]};font-size:30px">${TIERKORT[nt.tier]}</span>`, `${nt.koppen} beschikbaar${nt.aspirant?` + ${nt.aspirant} asp`:""} · vandaag`]
+      ? ["Bezetting vandaag", `<span style="color:${TIERKLEUR[nt.tier]};font-size:30px;display:block;text-align:center">${TIERKORT[nt.tier]}</span>`, `${nt.koppen}${nt.aspirant?` + ${nt.aspirant} asp`:""}`]
       : ["TS bezet", (B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%", B?`Van de tijd, afgelopen ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"]),
     ["Maanden binnen norm", tijden.filter(v=>v<=D.norm.uitruktijd_min).length+" van "+tijden.length, "Gemiddelde uitruktijd ≤ streefwaarde"],
   ];
