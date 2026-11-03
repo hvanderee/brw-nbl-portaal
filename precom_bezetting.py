@@ -19,7 +19,7 @@ TZ = ZoneInfo("Europe/Amsterdam")
 GROEP = int(os.environ.get("PRECOM_GROUP_ID", "4915"))
 NODE = os.environ.get("PRECOM_NODE_ID", "2123")      # post Nieuw-Beijerland in de Pre-Com-boom
 MODULE = os.environ.get("PRECOM_MODULE_ID", "79")    # module 'Bezetting'
-DAGEN = int(os.environ.get("PRECOM_DAGEN", "28"))
+DAGEN = int(os.environ.get("PRECOM_DAGEN", "7"))   # heatmap-voorspeller: max een week vooruit
 UIT = os.environ.get("PRECOM_OUTPUT", "bezetting.js")
 
 
@@ -121,6 +121,12 @@ def main():
     # 0 onvoldoende 1 ondergrens(4) 2 krap(5) 3 volwaardig(6) 4 volledig(6+asp)
     def tier_van(b, c, m, a):
         return 0 if (b < 1 or c < 1 or m < 4) else 1 if m == 4 else 2 if m == 5 else (4 if a >= 1 else 3)
+    _tlab = ["Onvoldoende", "Ondergrens · 4", "Krap · 5", "Volwaardig · 6", "Volledig · 6 + aspirant"]
+    # Huidige bezettingsgraad uit de actuele stand (vandaag-snapshot)
+    _besch = {f["id"]: f["beschikbaar"] for f in functies}
+    _av_nu = lambda fid: _besch.get(fid, 0) if fid else 0
+    _nu_t = tier_van(_av_nu(id_bev), _av_nu(id_chf), _av_nu(id_man), _av_nu(id_asp))
+    nu_tier = {"tier": _nu_t, "label": _tlab[_nu_t], "koppen": _av_nu(id_man), "aspirant": _av_nu(id_asp)}
 
     # 2. Vooruitblik: per kwartier of de TS de komende periode op ondergrens én op streefsterkte kan uitrukken
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
@@ -128,8 +134,10 @@ def main():
     ok_s = [[0] * 24 for _ in range(7)]                                      # streefsterkte
     ok_f = {fid: 0 for fid in ts}; n_slots = 0
     n_ond = n_str = n_sas = 0                                                # kwartieren die elke sterkte halen
-    tier_tot = [0, 0, 0, 0, 0]                                               # kwartieren per niveau
+    tier_tot = [0, 0, 0, 0, 0]                                               # kwartieren per niveau (komende week)
+    tier_tot_vandaag = [0, 0, 0, 0, 0]                                       # kwartieren per niveau (vandaag)
     tier_som = [[0] * 24 for _ in range(7)]                                  # som van niveaus per weekdag/uur
+    _vandaag_yy = vandaag.strftime("%y%m%d")
     for i in range(0, len(toekomst), 7):
         blok = bezetting(s, toekomst[i:i + 7])
         per_dag = {}
@@ -154,6 +162,7 @@ def main():
                 t = tier_van(av(id_bev) if id_bev else 0, av(id_chf) if id_chf else 0,
                              av(id_man) if id_man else 0, av(id_asp) if id_asp else 0)
                 tier_tot[t] += 1; tier_som[wd][slot // 4] += t
+                if dag == _vandaag_yy: tier_tot_vandaag[t] += 1
     heatmap        = [[round(100 * ok[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
     heatmap_streef = [[round(100 * ok_s[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
     heatmap_tier   = [[round(10 * tier_som[d][u] / tot[d][u]) / 10 if tot[d][u] else None for u in range(24)] for d in range(7)]
@@ -168,8 +177,9 @@ def main():
         "streef":     {"eis": 6, "pct": pct(n_str)},
         "streef_asp": {"eis": 7, "pct": pct(n_sas)},
     }
-    _tlab = ["Onvoldoende", "Ondergrens · 4", "Krap · 5", "Volwaardig · 6", "Volledig · 6 + aspirant"]
-    tier_verdeling = [{"tier": i, "label": _tlab[i], "pct": pct(n)} for i, n in enumerate(tier_tot)]
+    _nv = sum(tier_tot_vandaag)
+    _pctv = lambda x: round(100 * x / _nv) if _nv else None
+    tier_verdeling = [{"tier": i, "label": _tlab[i], "pct": _pctv(n)} for i, n in enumerate(tier_tot_vandaag)]
 
     uit = {
         "bron": "Pre-Com",
@@ -177,6 +187,7 @@ def main():
         "functies": functies,
         "ts_bezet_pct": round(100 * alle_ok / alle) if alle else None,
         "periode_dagen": DAGEN,
+        "nu_tier": nu_tier,
         "heatmap": heatmap,
         "heatmap_streef": heatmap_streef,
         "heatmap_tier": heatmap_tier,

@@ -11,7 +11,7 @@ const BASIS = "https://portal.pre-com.nl/PreCom/";
 const GROEP = Deno.env.get("PRECOM_GROUP_ID") ?? "4915";
 const NODE = Deno.env.get("PRECOM_NODE_ID") ?? "2123";
 const MODULE = Deno.env.get("PRECOM_MODULE_ID") ?? "79";
-const DAGEN = parseInt(Deno.env.get("PRECOM_DAGEN") ?? "28", 10);
+const DAGEN = parseInt(Deno.env.get("PRECOM_DAGEN") ?? "7", 10);   // heatmap-voorspeller: max een week vooruit
 
 // Streefsterkte (volwaardige TS) en aspirant, op functielabel — los van Pre-Com's 'nodig' (ondergrens).
 const STREEF: Record<string, number> = { "Bevelvoerder": 1, "Chauffeur TS": 1, "Manschap": 4 };
@@ -155,9 +155,16 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
   // 0 onvoldoende(rood) 1 ondergrens 4(oranje) 2 krap 5(lichtgroen) 3 volwaardig 6(groen) 4 volledig 6+asp(donkergroen)
   const tierVan = (b: number, c: number, m: number, a: number) =>
     (b < 1 || c < 1 || m < 4) ? 0 : m === 4 ? 1 : m === 5 ? 2 : (a >= 1 ? 4 : 3);
+  const tierLabels = ["Onvoldoende", "Ondergrens · 4", "Krap · 5", "Volwaardig · 6", "Volledig · 6 + aspirant"];
+  // Huidige bezettingsgraad uit de actuele stand (vandaag-snapshot)
+  const avNu = (id?: number) => id ? (functies.find((f) => f.id === id)?.beschikbaar ?? 0) : 0;
+  const nuT = tierVan(avNu(idBev), avNu(idChf), avNu(idMan), avNu(idAsp));
+  const nuTier = { tier: nuT, label: tierLabels[nuT], koppen: avNu(idMan), aspirant: avNu(idAsp) };
 
-  // 2. Vooruitblik: per kwartier ondergrens én streefsterkte
+  // 2. Vooruitblik: per kwartier het niveau. Heatmap = komende week; verdeling = vandaag.
   const toekomst = datesForward(DAGEN);
+  const todayYY = toekomst[0].slice(2).replace(/-/g, "");   // "2026-11-03" -> "261103"
+  const tierTotVandaag = [0, 0, 0, 0, 0];
   const ok = Array.from({ length: 7 }, () => new Array(24).fill(0));
   const tot = Array.from({ length: 7 }, () => new Array(24).fill(0));
   const okS = Array.from({ length: 7 }, () => new Array(24).fill(0));
@@ -183,6 +190,7 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
     }
     for (const dag of Object.keys(perDag)) {
       const wd = weekdayFromYYMMDD(dag);
+      const isVandaag = dag === todayYY;
       const f = perDag[dag];
       for (let slot = 0; slot < 96; slot++) {
         const av = (fid: number) => f[fid]?.[slot] ?? 0;
@@ -194,7 +202,7 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
         nSlots++; if (bezet) nOnd++; if (bezetS) nStr++; if (bezetA) nSas++;
         for (const [fid, n] of Object.entries(ts)) if (av(Number(fid)) >= n) okF[Number(fid)]++;
         const t = tierVan(idBev ? av(idBev) : 0, idChf ? av(idChf) : 0, idMan ? av(idMan) : 0, idAsp ? av(idAsp) : 0);
-        tierTot[t]++; tierSom[wd][u] += t;
+        tierTot[t]++; tierSom[wd][u] += t; if (isVandaag) tierTotVandaag[t]++;
       }
     }
   }
@@ -212,10 +220,11 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
     streef: { eis: 6, pct: pct(nStr) },
     streef_asp: { eis: 7, pct: pct(nSas) },
   };
-  // Bezettingsgraad: gemiddeld niveau per weekdag/uur (0..4, 1 decimaal) + verdeling over de 5 niveaus
+  // Heatmap (komende week): gemiddeld niveau per weekdag/uur. Verdeling: over vandaag.
   const heatmapTier = tierSom.map((row, d) => row.map((v, u) => tot[d][u] ? Math.round(10 * v / tot[d][u]) / 10 : null));
-  const tierLabels = ["Onvoldoende", "Ondergrens · 4", "Krap · 5", "Volwaardig · 6", "Volledig · 6 + aspirant"];
-  const tierVerdeling = tierTot.map((n, i) => ({ tier: i, label: tierLabels[i], pct: pct(n) }));
+  const nV = tierTotVandaag.reduce((a, b) => a + b, 0);
+  const pctV = (x: number) => nV ? Math.round(100 * x / nV) : null;
+  const tierVerdeling = tierTotVandaag.map((n, i) => ({ tier: i, label: tierLabels[i], pct: pctV(n) }));
 
   return {
     bron: "Pre-Com",
@@ -223,6 +232,7 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
     functies,
     ts_bezet_pct: alle ? Math.round(100 * alleOk / alle) : null,
     periode_dagen: DAGEN,
+    nu_tier: nuTier,
     heatmap,
     heatmap_streef: heatmapStreef,
     heatmap_tier: heatmapTier,

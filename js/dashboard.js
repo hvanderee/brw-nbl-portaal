@@ -9,6 +9,7 @@ const DAG = ["ma","di","wo","do","vr","za","zo"];
 // Bezettingsgraad — 5 niveaus (rood → donkergroen)
 const TIERKLEUR = ["#CF311B","#E8820E","#86C98E","#2F7D4F","#13482C"];
 const TIERNAAM  = ["Onvoldoende","Ondergrens · 4","Krap · 5","Volwaardig · 6","Volledig · 6 + aspirant"];
+const TIERKORT  = ["Onvoldoende","Ondergrens","Krap","Volwaardig","Volledig"];
 function _hx(h){ return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); }
 function tierKleur(v){
   if(v==null) return "#EDEFF0";
@@ -49,7 +50,12 @@ function teken(){
   for(const x of fl){ const ok=x.n>=x.nodig; if(!ok) vol=false;
     f += `<div class="functie ${ok?"":"tekort"}"><div class="nm">${x.nm}</div><div class="vl">${x.n} <span>/ ${x.nodig} nodig</span></div><div class="balk"><i style="width:${Math.min(100,x.n/x.nodig*100)}%"></i></div></div>`; }
   const overig = B ? B.functies.filter(x=>x.nodig===0).map(x=>`${x.label} <b>${x.beschikbaar}</b>`).join(" · ") : "";
-  $("#status").innerHTML = `<div class="st-kop"><div class="st-icoon ${vol?"ok":"niet"}">${vol?ICOON_OK:ICOON_NIET}</div><div><b>${vol?"TS volledig bezet":"TS niet volledig bezet"}</b><small>Beschikbaarheid volgens Pre-Com</small></div></div><div class="functies">${f}</div>${overig?`<div class="overig">Ook beschikbaar: ${overig}</div>`:""}`;
+  const nt = B && B.nu_tier;
+  const stK = nt ? TIERKLEUR[nt.tier] : null;
+  const stTitel = nt ? "TS nu: "+nt.label : (vol?"TS volledig bezet":"TS niet volledig bezet");
+  const stIco = nt ? (nt.tier>=1?ICOON_OK:ICOON_NIET) : (vol?ICOON_OK:ICOON_NIET);
+  const stKop = nt ? `<div class="st-icoon" style="background:${stK}22;color:${stK}">${stIco}</div>` : `<div class="st-icoon ${vol?"ok":"niet"}">${stIco}</div>`;
+  $("#status").innerHTML = `<div class="st-kop">${stKop}<div><b>${stTitel}</b><small>Beschikbaarheid volgens Pre-Com · vandaag</small></div></div><div class="functies">${f}</div>${overig?`<div class="overig">Ook beschikbaar: ${overig}</div>`:""}`;
 
   const dj=D.uitrukken_per_maand.dit_jaar, vj=D.uitrukken_per_maand.vorig_jaar, n=dj.filter(v=>v!=null).length;
   const tot=dj.reduce((a,v)=>a+(v||0),0), vtot=vj.slice(0,n).reduce((a,v)=>a+v,0);
@@ -57,7 +63,9 @@ function teken(){
   const kpis=[
     ["Uitrukken "+D.jaar, tot, `${tot>=vtot?"+":"−"}${Math.abs(tot-vtot)} t.o.v. zelfde periode ${D.jaar-1}`],
     ["Gem. uitruktijd (P1)", fmtMin(gem), `P1-streefwaarde ${fmtMin(D.norm.uitruktijd_min)} · excl. reanimatie`],
-    ["TS bezet", (B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%", B?`Van de tijd, afgelopen ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"],
+    (nt
+      ? ["Bezetting nu", `<span style="color:${TIERKLEUR[nt.tier]};font-size:30px">${TIERKORT[nt.tier]}</span>`, `${nt.koppen} beschikbaar${nt.aspirant?` + ${nt.aspirant} asp`:""} · vandaag`]
+      : ["TS bezet", (B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%", B?`Van de tijd, afgelopen ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"]),
     ["Maanden binnen norm", tijden.filter(v=>v<=D.norm.uitruktijd_min).length+" van "+tijden.length, "Gemiddelde uitruktijd ≤ streefwaarde"],
   ];
   $("#kpis").innerHTML = kpis.map(k=>`<div class="kaart kpi"><div class="label">${k[0]}</div><div class="waarde">${k[1]}</div><div class="sub">${k[2]}</div></div>`).join("");
@@ -112,16 +120,16 @@ function renderBeschikbaarheid(){
 
 function renderSterkte(){
   const B = window.NBL_BEZETTING, box = $("#sterkte"); if(!box) return;
-  const dgn = (B && B.periode_dagen) || 28;
-  const sb = $("#sterkteBron"); if(sb && B) sb.textContent = "Komende "+dgn+" dagen · bron Pre-Com";
+  const sb = $("#sterkteBron"); if(sb && B) sb.textContent = "Vandaag · bron Pre-Com";
   const tv = B && B.tier_verdeling;
   if(tv && tv.length){
     box.innerHTML = tv.slice().reverse().map(r=>{ const p = r.pct==null?0:r.pct, kl = TIERKLEUR[r.tier];
       return `<div class="tier-rij"><div class="tier-kop"><span class="tier-naam"><i style="background:${kl}"></i>${r.label}</span><b>${r.pct==null?"–":p+"%"}</b></div><div class="balk"><i style="width:${p}%;background:${kl}"></i></div></div>`;
     }).join("")
-      + `<p class="uitleg" style="margin:14px 0 0">Aandeel van de komende ${dgn} dagen dat de post op dat niveau kan uitrukken, volgens Pre-Com-beschikbaarheid. Elk kwartier telt mee op het hoogste niveau dat haalbaar is.</p>`;
+      + `<p class="uitleg" style="margin:14px 0 0">Aandeel van vandaag dat de post op dat niveau kan uitrukken, volgens Pre-Com-beschikbaarheid. Elk kwartier telt mee op het hoogste niveau dat haalbaar is.</p>`;
     return;
   }
+  const dgn = (B && B.periode_dagen) || 7;
   const s = B && B.sterkte;
   if(!s){ box.innerHTML = '<p class="geen">Vooruitblik op sterkte wordt bij de volgende Pre-Com-verversing toegevoegd.</p>'; return; }
   const items = [
