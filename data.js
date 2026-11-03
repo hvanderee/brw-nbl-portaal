@@ -234,15 +234,15 @@ window.NBL_DATA = {
   ]
  },
  "uitruktijd_per_maand": [
-  4.21,
-  4.34,
-  4.34,
-  4.75,
-  5.36,
-  4.73,
-  4.31,
-  4.78,
-  4.02,
+  3.82,
+  4.3,
+  4.46,
+  5.55,
+  5.42,
+  4.26,
+  3.92,
+  5.01,
+  4.68,
   4.33,
   null,
   null
@@ -261,10 +261,88 @@ window.NBL_DATA = {
    57
   ]
  ],
- "prioriteit": [["P1", 29], ["P2", 28]],
- "dagdeel": [["Ochtend", 16], ["Middag", 12], ["Avond", 20], ["Nacht", 9]],
- "opkomst": {"gemiddeld": 5.6, "norm": 6, "min": 4, "max": 7, "verdeling": [[4, 4], [5, 19], [6, 17], [7, 7]]},
- "uitruktijd_spreiding": {"n": 53, "gemiddeld_tekst": "4:29", "mediaan_tekst": "4:29", "p90_tekst": "6:12", "streef": 4.0, "binnen_streef_pct": 34, "histogram": [["< 4 min", 15], ["4–5 min", 23], ["5–6 min", 9], ["6–7 min", 6], ["> 7 min", 0]]},
+ "prioriteit": [
+  [
+   "P1",
+   29
+  ],
+  [
+   "P2",
+   28
+  ]
+ ],
+ "dagdeel": [
+  [
+   "Ochtend",
+   16
+  ],
+  [
+   "Middag",
+   12
+  ],
+  [
+   "Avond",
+   20
+  ],
+  [
+   "Nacht",
+   9
+  ]
+ ],
+ "opkomst": {
+  "gemiddeld": 5.6,
+  "norm": 6,
+  "min": 4,
+  "max": 7,
+  "verdeling": [
+   [
+    4,
+    4
+   ],
+   [
+    5,
+    19
+   ],
+   [
+    6,
+    17
+   ],
+   [
+    7,
+    7
+   ]
+  ]
+ },
+ "uitruktijd_spreiding": {
+  "n": 24,
+  "gemiddeld_tekst": "4:26",
+  "mediaan_tekst": "4:23",
+  "p90_tekst": "5:29",
+  "streef": 4.0,
+  "binnen_streef_pct": 33,
+  "histogram": [
+   [
+    "< 4 min",
+    7
+   ],
+   [
+    "4–5 min",
+    10
+   ],
+   [
+    "5–6 min",
+    6
+   ],
+   [
+    "6–7 min",
+    1
+   ],
+   [
+    "> 7 min",
+    0
+   ]
+  ]
+ },
  "meldingstypen": [
   [
    "Brand buiten",

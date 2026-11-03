@@ -46,7 +46,7 @@ function teken(){
   const tijden=D.uitruktijd_per_maand.filter(v=>v!=null), gem=tijden.reduce((a,v)=>a+v,0)/tijden.length;
   const kpis=[
     ["Uitrukken "+D.jaar, tot, `${tot>=vtot?"+":"−"}${Math.abs(tot-vtot)} t.o.v. zelfde periode ${D.jaar-1}`],
-    ["Gemiddelde uitruktijd", fmtMin(gem), `Streefwaarde ${fmtMin(D.norm.uitruktijd_min)}`],
+    ["Gem. uitruktijd (P1)", fmtMin(gem), `P1-streefwaarde ${fmtMin(D.norm.uitruktijd_min)} · excl. reanimatie`],
     ["TS bezet", (B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%", B?`Van de tijd, afgelopen ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"],
     ["Maanden binnen norm", tijden.filter(v=>v<=D.norm.uitruktijd_min).length+" van "+tijden.length, "Gemiddelde uitruktijd ≤ streefwaarde"],
   ];
@@ -190,7 +190,7 @@ function grafUitrukTijd(){
   const vals=D.uitruktijd_per_maand, nm=D.norm.uitruktijd_min; max=Math.ceil(Math.max(nm,...vals.filter(v=>v!=null))+1);
   bw=assen(svg,W,H,m,max,1,v=>v+":00"); y=v=>m.t+(H-m.t-m.b)*(1-v/max);
   el("line",{x1:m.l,x2:W-m.r,y1:y(nm),y2:y(nm),stroke:"var(--red-accessible)","stroke-width":1,"stroke-dasharray":"4 4"},svg);
-  el("text",{x:W-m.r,y:y(nm)-6,"text-anchor":"end",style:"fill:var(--red-accessible)"},svg).textContent="Streefwaarde "+fmtMin(nm);
+  el("text",{x:W-m.r,y:y(nm)-6,"text-anchor":"end",style:"fill:var(--red-accessible)"},svg).textContent="P1-streefwaarde "+fmtMin(nm);
   const pts=vals.map((v,i)=>v==null?null:[m.l+bw*i+bw/2,y(v),v,i]).filter(Boolean);
   el("polyline",{points:pts.map(p=>p[0]+","+p[1]).join(" "),fill:"none",stroke:"var(--ink)","stroke-width":2,"stroke-linejoin":"round"},svg);
   pts.forEach(([x,yy,v,i])=>{ const bo=v>nm;
