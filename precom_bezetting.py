@@ -116,9 +116,11 @@ def main():
     id_chf = next((f["id"] for f in functies if f["label"] == "Chauffeur TS"), None)
     id_man = next((f["id"] for f in functies if f["label"] == "Manschap"), None)
     id_asp = next((f["id"] for f in functies if f["label"] in ("Asp. Manschap", "Asp. manschap")), None)
+    # m = aantal beschikbare koppen (manschap-telling ≈ totaal, want iedereen is manschap);
+    # b/c = of er minstens 1 bevelvoerder resp. chauffeur tussen zit.
     # 0 onvoldoende 1 ondergrens(4) 2 krap(5) 3 volwaardig(6) 4 volledig(6+asp)
     def tier_van(b, c, m, a):
-        return 0 if (b < 1 or c < 1 or m < 2) else 1 if m == 2 else 2 if m == 3 else (4 if a >= 1 else 3)
+        return 0 if (b < 1 or c < 1 or m < 4) else 1 if m == 4 else 2 if m == 5 else (4 if a >= 1 else 3)
 
     # 2. Vooruitblik: per kwartier of de TS de komende periode op ondergrens én op streefsterkte kan uitrukken
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]

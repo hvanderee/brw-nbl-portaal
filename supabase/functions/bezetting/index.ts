@@ -150,9 +150,11 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
   const idChf = functies.find((f) => f.label === "Chauffeur TS")?.id;
   const idMan = functies.find((f) => f.label === "Manschap")?.id;
   const idAsp = functies.find((f) => f.label === "Asp. Manschap" || f.label === "Asp. manschap")?.id;
+  // m = aantal beschikbare koppen (manschap-telling ≈ totaal, want iedereen is manschap);
+  // b/c = of er minstens 1 bevelvoerder resp. chauffeur tussen zit.
   // 0 onvoldoende(rood) 1 ondergrens 4(oranje) 2 krap 5(lichtgroen) 3 volwaardig 6(groen) 4 volledig 6+asp(donkergroen)
   const tierVan = (b: number, c: number, m: number, a: number) =>
-    (b < 1 || c < 1 || m < 2) ? 0 : m === 2 ? 1 : m === 3 ? 2 : (a >= 1 ? 4 : 3);
+    (b < 1 || c < 1 || m < 4) ? 0 : m === 4 ? 1 : m === 5 ? 2 : (a >= 1 ? 4 : 3);
 
   // 2. Vooruitblik: per kwartier ondergrens én streefsterkte
   const toekomst = datesForward(DAGEN);
