@@ -155,6 +155,7 @@ function openForm(id){
   $('#m-voornaam').value   = l ? (l.voornaam||'') : '';
   $('#m-achternaam').value = l ? (l.achternaam||'') : '';
   $('#m-email').value      = l ? (l.email||'') : '';
+  $('#m-vpid').value       = l ? (l.vp_id||'') : '';
   $('#m-actief').checked   = l ? l.actief !== false : true;
   KWALS.forEach(([k]) => { const inp = $('#chk-'+k); inp.checked = l ? !!l[k] : false; inp.closest('.check').classList.toggle('aan', inp.checked); });
   melding('#m-melding','');
@@ -171,7 +172,7 @@ $('#f-lid').addEventListener('submit', async e => {
   const vn = $('#m-voornaam').value.trim(), an = $('#m-achternaam').value.trim();
   if(!vn || !an){ melding('#m-melding','Voornaam en achternaam zijn verplicht.', 'fout'); return; }
   const rij = { voornaam:vn, achternaam:an, naam:(vn+' '+an),
-    email: $('#m-email').value.trim() || null, actief: $('#m-actief').checked };
+    email: $('#m-email').value.trim() || null, vp_id: $('#m-vpid').value.trim() || null, actief: $('#m-actief').checked };
   KWALS.forEach(([k]) => rij[k] = $('#chk-'+k).checked);
   const id = $('#m-id').value;
   $('#m-opslaan').disabled = true; melding('#m-melding','Opslaan…');
