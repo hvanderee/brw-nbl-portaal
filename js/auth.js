@@ -37,9 +37,19 @@ async function laadMijnUitrukken(){
   try{
     const { data, error } = await supabase
       .from('vp_opkomst')
-      .select('opkomst,rol,uitgerukt_op,terug_op,incident:vp_incidenten(gebeurtenis_id,nummer,begin_op,prioriteit,city_name,street_full,object_functie,classificatie)')
+      .select('user_id,opkomst,rol,uitgerukt_op,terug_op,incident:vp_incidenten(gebeurtenis_id,nummer,begin_op,prioriteit,city_name,street_full,object_functie,classificatie)')
       .order('id', { ascending:false });
-    window.NBLDash.renderMijn(error ? [] : (data || []));
+    const rijen = error ? [] : (data || []);
+    // Handmatige correcties (Verschillen-verklaring) over de VP-data heen leggen,
+    // alleen voor het ingelogde ploeglid. RLS levert enkel de eigen regels, dus het
+    // VP-id leiden we af uit de eerste eigen regel.
+    const alle = window.NBL_CORRECTIES || { toevoegen:[], verwijderen:[] };
+    const uid = rijen.length ? rijen[0].user_id : null;
+    const corr = (uid == null) ? { toevoegen:[], verwijderen:[] } : {
+      toevoegen:  (alle.toevoegen  || []).filter(t => String(t.user_id) === String(uid)),
+      verwijderen:(alle.verwijderen|| []).filter(v => String(v.user_id) === String(uid)),
+    };
+    window.NBLDash.renderMijn(rijen, corr);
   }catch(e){ window.NBLDash.renderMijn([]); }
 }
 

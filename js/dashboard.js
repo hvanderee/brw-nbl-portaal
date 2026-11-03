@@ -282,10 +282,23 @@ const OPKOMST_MEE   = new Set([3]);
 const nlDatKort = s => new Date(s).toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"});
 const kortRol = r => !r ? "–" : r.replace(/vrijwillig\s*/i,"").replace(/\s*\(.*?\)\s*/g," ").replace(/\s+/g," ").trim().replace(/^./,c=>c.toUpperCase());
 
-function renderMijn(rows){
+function renderMijn(rows, corr){
   const jaar = new Date().getFullYear();
+  corr = corr || { toevoegen:[], verwijderen:[] };
+  // Handmatige correcties uit de Verschillen-verklaring:
+  //  - verwijderen: onterechte VP-regels (bv. OBL/buurpost-inzet) eruit filteren op gebeurtenis_id.
+  //  - toevoegen: uitrukken die niet in VP staan maar wel meetellen, als synthetische regel erbij.
+  const weg = new Set((corr.verwijderen||[]).map(v=>String(v.gebeurtenis_id)));
+  rows = (rows||[]).filter(r=> !(r.incident && weg.has(String(r.incident.gebeurtenis_id))));
+  const extra = (corr.toevoegen||[]).map(t=>({
+    opkomst:3, rol:t.rol, _handmatig:true, _geentijd:(t.tijd_bekend===false),
+    incident:{ gebeurtenis_id:null, begin_op:t.begin_op,
+      prioriteit:(t.prioriteit!=null?t.prioriteit:null),
+      city_name:t.plaats, street_full:t.straat, object_functie:t.melding, classificatie:null }
+  }));
+  rows = rows.concat(extra);
   // Alleen het lopende jaar, nieuwste eerst.
-  rows = (rows||[]).filter(r=>r.incident && new Date(r.incident.begin_op).getFullYear()===jaar).slice()
+  rows = rows.filter(r=>r.incident && new Date(r.incident.begin_op).getFullYear()===jaar).slice()
     .sort((a,b)=> new Date(b.incident.begin_op||0) - new Date(a.incident.begin_op||0));
   const uitgerukt = rows.filter(r=> r.opkomst===3);
   const opgekomen = rows.filter(r=> r.opkomst===3 || r.opkomst===4);
@@ -306,13 +319,15 @@ function renderMijn(rows){
     return;
   }
   if(bron) bron.textContent = rows.length+" uitrukken in "+jaar+" · "+uitgerukt.length+" uitgerukt";
-  body.innerHTML = rows.map(r=>{ const i=r.incident, dt=new Date(i.begin_op), isUit = r.opkomst===3;
+  body.innerHTML = rows.map(r=>{ const i=r.incident, dt=new Date(i.begin_op), isUit = r.opkomst===3, hm = !!r._handmatig;
     const mld = (i.object_functie && i.object_functie!=="Onbekend") ? i.object_functie : (i.classificatie || "Melding");
     const loc = `${esc(i.street_full||"–")}${i.city_name?`<span class="pct">${esc(i.city_name)}</span>`:""}`;
+    const tijd = (hm && r._geentijd) ? "" : `<span class="pct">${dt.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"})}</span>`;
+    const prio = (i.prioriteit!=null && i.prioriteit!=="") ? `<span class="prio P${i.prioriteit}">P${i.prioriteit}</span>` : '<span class="dim">–</span>';
     return `<tr class="${isUit?"":"nietmee"}">
-      <td>${nlDatKort(i.begin_op)}<span class="pct">${dt.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"})}</span></td>
-      <td><span class="prio P${i.prioriteit||"?"}">P${i.prioriteit||"?"}</span></td>
-      <td>${esc(mld)}</td>
+      <td>${nlDatKort(i.begin_op)}${tijd}</td>
+      <td>${prio}</td>
+      <td>${esc(mld)}${hm?' <span class="tag-hm" title="Handmatig toegevoegd uit de Verschillen-verklaring">handmatig</span>':""}</td>
       <td>${loc}</td>
       <td>${isUit ? esc(kortRol(r.rol)) : '<span class="dim">–</span>'}</td>
       <td class="r"><span class="opk opk${r.opkomst}">${OPKOMST_LABEL[r.opkomst]||("code "+r.opkomst)}</span></td>
