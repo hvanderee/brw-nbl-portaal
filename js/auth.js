@@ -142,7 +142,7 @@ async function laadLeden(){
 /* Accountstatus per lid ophalen via de beveiligde Edge Function (alleen beheerder). */
 async function laadAccountStatus(){
   try{
-    const { data, error } = await supabase.functions.invoke('ploeg-beheer', { body:{ action:'status' } });
+    const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'status' } });
     if(!error && data && data.ok){ accountStatus = data.status || {}; renderLeden(); }
   }catch(e){ /* stil: kolom toont dan "…" */ }
 }
@@ -184,7 +184,7 @@ async function nodigUit(id){
   if(!l.email){ melding('#leden-melding','Dit lid heeft geen e-mailadres. Vul dat eerst in via Bewerken.', 'fout'); return; }
   if(!confirm('Uitnodiging per e-mail sturen naar '+l.email+'?')) return;
   melding('#leden-melding','Uitnodiging versturen…');
-  const { data, error } = await supabase.functions.invoke('ploeg-beheer', { body:{ action:'invite', id } });
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'invite', id } });
   if(error || !data || !data.ok){ melding('#leden-melding', (data && data.error) || vertaalFout((error && error.message) || 'Versturen mislukt.'), 'fout'); return; }
   melding('#leden-melding', data.herinnerd ? 'Al uitgenodigd — herinnering verstuurd.' : 'Uitnodiging verstuurd naar '+l.email+'.', 'ok');
   laadAccountStatus();
