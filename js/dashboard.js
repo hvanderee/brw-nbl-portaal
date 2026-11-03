@@ -274,5 +274,46 @@ function grafUitrukTijd(){
 }
 function tekenGrafieken(){ if(!D) return; grafUitrukTijd(); grafJaar(); }
 
-window.NBLDash = { teken, tekenGrafieken };
+/* ===== Mijn uitrukken (Veiligheidspaspoort) ===== */
+// Opkomst-codes uit VP: 1 = niet opgekomen, 3 = uitgerukt (met de TS mee), 4 = kazerne
+// (wel opgekomen, niet uitgerukt). "Mee" op een uitruk = uitgerukt (3).
+const OPKOMST_LABEL = { 1:"Niet opgekomen", 3:"Uitgerukt", 4:"Kazerne" };
+const OPKOMST_MEE   = new Set([3]);
+const nlDatKort = s => new Date(s).toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"});
+const kortRol = r => !r ? "–" : r.replace(/vrijwillig\s*/i,"").replace(/\s*\(.*?\)\s*/g," ").replace(/\s+/g," ").trim().replace(/^./,c=>c.toUpperCase());
+
+function renderMijn(rows){
+  rows = (rows||[]).filter(r=>r.incident).slice()
+    .sort((a,b)=> new Date(b.incident.begin_op||0) - new Date(a.incident.begin_op||0));
+  const jaar = new Date().getFullYear();
+  const mee = rows.filter(r=>OPKOMST_MEE.has(r.opkomst));
+  const meeJaar = mee.filter(r=> new Date(r.incident.begin_op).getFullYear()===jaar);
+  const laatste = mee[0] || rows[0];
+  const rolTel = {}; mee.forEach(r=>{ if(r.rol) rolTel[r.rol]=(rolTel[r.rol]||0)+1; });
+  const vaak = Object.entries(rolTel).sort((a,b)=>b[1]-a[1])[0];
+  const kpis = [
+    ["Uitgerukt "+jaar, meeJaar.length, "uitrukken dit jaar"],
+    ["Totaal uitgerukt", mee.length, "sinds de start in VP"],
+    ["Laatste uitruk", laatste?nlDatKort(laatste.incident.begin_op):"–", laatste&&laatste.incident.city_name||""],
+    ["Vaakste functie", vaak?kortRol(vaak[0]):"–", vaak?vaak[1]+"×":""],
+  ];
+  const kp = $("#mijn-kpis"); if(kp) kp.innerHTML = kpis.map(k=>`<div class="kaart kpi"><div class="label">${k[0]}</div><div class="waarde">${k[1]}</div><div class="sub">${k[2]}</div></div>`).join("");
+  const bron = $("#mijn-bron"); const body = $("#mijn-body"); if(!body) return;
+  if(!rows.length){
+    if(bron) bron.textContent = "";
+    body.innerHTML = `<tr><td colspan="6" style="color:var(--slate)">Nog geen uitrukken gekoppeld. Draai de VP-sync, of controleer of je account-mailadres aan je ploeglid (met VP-id) gekoppeld is.</td></tr>`;
+    return;
+  }
+  if(bron) bron.textContent = rows.length+" geregistreerd · "+mee.length+" uitgerukt";
+  body.innerHTML = rows.map(r=>{ const i=r.incident, dt=new Date(i.begin_op), isMee=OPKOMST_MEE.has(r.opkomst);
+    const mld = (i.object_functie && i.object_functie!=="Onbekend") ? i.object_functie : (i.classificatie || i.street_full || "Melding");
+    return `<tr class="${isMee?"":"nietmee"}">
+      <td>${nlDatKort(i.begin_op)}<br><span class="dim">${dt.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"})}</span></td>
+      <td><span class="prio P${i.prioriteit||"?"}">P${i.prioriteit||"?"}</span></td>
+      <td>${esc(mld)}</td><td>${esc(i.city_name||"")}</td><td>${esc(kortRol(r.rol))}</td>
+      <td class="r"><span class="opk opk${r.opkomst}">${OPKOMST_LABEL[r.opkomst]||("code "+r.opkomst)}</span></td>
+    </tr>`; }).join("");
+}
+
+window.NBLDash = { teken, tekenGrafieken, renderMijn };
 })();

@@ -24,9 +24,24 @@ function toonTab(naam){
   TABS.forEach(t => { const v = $('#view-'+t); if(v) v.hidden = (t !== naam); });
   $$('.tabknop').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === naam)));
   if(naam === 'uitrukken' && window.NBLDash) window.NBLDash.tekenGrafieken();
+  if(naam === 'mijn') laadMijnUitrukken();
   scrollTo(0,0);
 }
 $$('.tabknop').forEach(b => b.addEventListener('click', () => toonTab(b.dataset.tab)));
+
+/* Mijn uitrukken: leest de eigen opkomst-regels uit Supabase (RLS geeft alleen eigen regels). */
+let mijnGeladen = false;
+async function laadMijnUitrukken(){
+  if(!window.NBLDash || !window.NBLDash.renderMijn) return;
+  if(mijnGeladen) return; mijnGeladen = true;
+  try{
+    const { data, error } = await supabase
+      .from('vp_opkomst')
+      .select('opkomst,rol,uitgerukt_op,terug_op,incident:vp_incidenten(gebeurtenis_id,nummer,begin_op,prioriteit,city_name,street_full,object_functie,classificatie)')
+      .order('id', { ascending:false });
+    window.NBLDash.renderMijn(error ? [] : (data || []));
+  }catch(e){ window.NBLDash.renderMijn([]); }
+}
 
 /* ============ AUTH ============ */
 $('#naar-reset').onclick  = () => kaart('c-reset');
