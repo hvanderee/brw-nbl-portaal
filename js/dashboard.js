@@ -31,7 +31,7 @@ function teken(){
   if(B){
     const tb = new Date(B.bijgewerkt), oud = (Date.now()-tb) > 60*60*1000;
     $("#bijgewerkt").innerHTML = (oud?'<span class="oud">Niet actueel · </span>':'')+"Pre-Com · bijgewerkt "+tb.toLocaleString("nl-NL",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
-    $("#hmBron").textContent = "Afgelopen "+B.periode_dagen+" dagen · bron Pre-Com";
+    $("#hmBron").textContent = "Komende "+B.periode_dagen+" dagen · bron Pre-Com";
   }
   const fl = B ? B.functies.filter(x=>x.nodig>0).map(x=>({nm:x.label,n:x.beschikbaar,nodig:x.nodig}))
               : Object.keys(D.norm.bezetting).map(k=>({nm:k,n:D.nu[k]||0,nodig:D.norm.bezetting[k]}));
@@ -53,20 +53,22 @@ function teken(){
   $("#kpis").innerHTML = kpis.map(k=>`<div class="kaart kpi"><div class="label">${k[0]}</div><div class="waarde">${k[1]}</div><div class="sub">${k[2]}</div></div>`).join("");
 
   renderBeschikbaarheid();
+  renderSterkte();
 
-  const HM=B&&B.heatmap?B.heatmap:D.heatmap, alle=HM.flat().filter(v=>v!=null), lo=Math.min(99,...alle);
+  const HM=B&&(B.heatmap_streef||B.heatmap)?(B.heatmap_streef||B.heatmap):D.heatmap, alle=HM.flat().filter(v=>v!=null), lo=Math.min(99,...alle);
   $("#hmMin").textContent = lo+"%";
   const kleur = v => { const t=(v-lo)/(100-lo||1); const a=[237,239,240], b=[17,24,32]; return `rgb(${a.map((x,i)=>Math.round(x+(b[i]-x)*t)).join(",")})`; };
   let h='<div></div>'; for(let u=0;u<24;u++) h+=`<div class="u">${u}</div>`;
   HM.forEach((rij,d)=>{ h+=`<div class="d">${DAG[d]}</div>`;
-    rij.forEach((v,u)=>h+=v==null?`<div class="c" style="background:#EDEFF0"></div>`:`<div class="c" style="background:${kleur(v)}" data-t="${DAG[d]} ${String(u).padStart(2,"0")}:00–${String(u+1).padStart(2,"0")}:00 · ${v}% volledig bezet"></div>`); });
+    rij.forEach((v,u)=>h+=v==null?`<div class="c" style="background:#EDEFF0"></div>`:`<div class="c" style="background:${kleur(v)}" data-t="${DAG[d]} ${String(u).padStart(2,"0")}:00–${String(u+1).padStart(2,"0")}:00 · ${v}% volledige TS"></div>`); });
   const hm=$("#heatmap"); if(hm){ hm.innerHTML=h;
     hm.addEventListener("mousemove",e=>{const c=e.target.closest(".c"); c?toonTip(e,c.dataset.t):verberg();}); hm.addEventListener("mouseleave",verberg); }
 
   $("#lgJaar").textContent=D.jaar; $("#lgVorig").textContent=D.jaar-1;
 
   $("#recent").innerHTML = D.recente_uitrukken.map(([dt,tijd,prio,mld,ut,bez])=>{ const [m,sc]=ut.split(":").map(Number);
-    return `<tr><td>${new Date(dt).toLocaleDateString("nl-NL",{day:"numeric",month:"short"}).replace(" ","&nbsp;")}<br><span class="dim">${tijd}</span></td><td><span class="prio ${prio}">${prio}</span></td><td>${mld}</td><td class="r ${(m+sc/60)>D.norm.uitruktijd_min?"boven":""}">${ut}</td><td class="r">${bez}</td></tr>`; }).join("");
+    const boven = prio==="P1" && (m+sc/60)>D.norm.uitruktijd_min;
+    return `<tr><td>${new Date(dt).toLocaleDateString("nl-NL",{day:"numeric",month:"short"}).replace(" ","&nbsp;")}<br><span class="dim">${tijd}</span></td><td><span class="prio ${prio}">${prio}</span></td><td>${mld}</td><td class="r ${boven?"boven":""}">${ut}</td><td class="r">${bez}</td></tr>`; }).join("");
 
   const ty=[...D.meldingstypen].sort((a,b)=>b[1]-a[1]), mx=ty[0][1];
   $("#typen").innerHTML = ty.map(([t,v])=>`<div class="type"><div class="rij"><span>${t}</span><b>${v}</b></div><div class="balk"><i style="width:${v/mx*100}%"></i></div></div>`).join("");
@@ -91,6 +93,25 @@ function renderBeschikbaarheid(){
     + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r">${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span></td><td class="r kol-sort"><b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span></td><td class="r sep"></td><td class="r"></td><td class="r"></td></tr>`;
 }
 
+function renderSterkte(){
+  const B = window.NBL_BEZETTING, box = $("#sterkte"); if(!box) return;
+  const sb = $("#sterkteBron"); if(sb && B) sb.textContent = "Komende "+(B.periode_dagen||28)+" dagen · bron Pre-Com";
+  const s = B && B.sterkte;
+  if(!s){ box.innerHTML = '<p class="geen">Vooruitblik op sterkte wordt bij de volgende Pre-Com-verversing toegevoegd.</p>'; return; }
+  const dgn = B.periode_dagen||28;
+  const items = [
+    ["Ondergrens · 4 leden","Bevelvoerder, chauffeur, 2 manschappen — krapst mogelijk", s.ondergrens],
+    ["Streefsterkte · 6 leden","Bevelvoerder, chauffeur, 4 manschappen — volwaardige TS", s.streef],
+    ["Volledig · 6 + aspirant","Streefsterkte plus 1 aspirant-manschap", s.streef_asp],
+  ];
+  box.innerHTML = items.map(([t,sub,o])=>{ const p = o && o.pct!=null ? o.pct : null;
+    const kleur = p==null?"var(--ink)":(p>=90?"var(--groen)":p>=60?"var(--gold)":"var(--red-accessible)");
+    return `<div class="tegel"><div class="nm"><b>${t}</b><br>${sub}</div>`
+      + `<div class="vl" style="color:${kleur}">${p==null?"–":p+"%"}</div>`
+      + `<div class="balk"><i style="width:${p||0}%;background:${kleur}"></i></div>`
+      + `<div class="nm" style="margin-top:7px">van de tijd beschikbaar · komende ${dgn} dagen</div></div>`;
+  }).join("");
+}
 function balken(id,rows,opt){
   const box=$("#"+id); if(!box||!rows||!rows.length) return;
   const mx=Math.max(...rows.map(r=>r[1]))||1, suf=(opt&&opt.suffix)||"";
@@ -100,14 +121,15 @@ function balken(id,rows,opt){
 }
 function widgets(){
   const B=window.NBL_BEZETTING||null;
-  if(B&&B.heatmap){
+  const HMW = B ? (B.heatmap_streef||B.heatmap) : null;
+  if(B&&HMW){
     let dOk=0,dN=0,nOk=0,nN=0;
-    B.heatmap.forEach(rij=>rij.forEach((v,u)=>{ if(v==null)return; if(u>=8&&u<18){dN++;dOk+=v;}else{nN++;nOk+=v;} }));
+    HMW.forEach(rij=>rij.forEach((v,u)=>{ if(v==null)return; if(u>=8&&u<18){dN++;dOk+=v;}else{nN++;nOk+=v;} }));
     const dag=dN?Math.round(dOk/dN):null, nacht=nN?Math.round(nOk/nN):null, dn=$("#dagnacht");
     if(dn) dn.innerHTML=[["Overdag","08–18 uur",dag],["'s Nachts","18–08 uur",nacht]].map(([t,sb,v])=>
       `<div class="tegel"><div class="nm">${t} · ${sb}</div><div class="vl">${v==null?"–":v+"%"}</div><div class="balk"><i style="width:${v||0}%"></i></div></div>`).join("");
     const vs=[];
-    B.heatmap.forEach((rij,d)=>{ let st=null;
+    HMW.forEach((rij,d)=>{ let st=null;
       for(let u=0;u<=24;u++){ const bad=u<24&&rij[u]!=null&&rij[u]<100;
         if(bad&&st==null)st=u; else if(!bad&&st!=null){ const seg=rij.slice(st,u).filter(x=>x!=null); vs.push([DAG[d],st,u,Math.min(...seg)]); st=null; } } });
     vs.sort((a,b)=>a[3]-b[3]);

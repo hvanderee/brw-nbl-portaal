@@ -99,33 +99,58 @@ def main():
                  "nodig": t["Necessary"], "totaal": t["Configured"]} for t in totals]
     ts = {f["id"]: f["nodig"] for f in functies if f["nodig"] > 0}
 
-    # 2. Vooruitblik: per kwartier of de TS de komende periode volledig bezet kan uitrukken
+    # Streefsterkte (volwaardige TS) en aspirant, op functielabel — los van Pre-Com's 'nodig' (= ondergrens).
+    # Ondergrens = 4 (bevelvoerder, chauffeur, 2 manschappen), komt uit Pre-Com (nodig).
+    # Streefsterkte = 6 (bevelvoerder, chauffeur, 4 manschappen); volledig = streefsterkte + 1 aspirant.
+    STREEF = {"Bevelvoerder": 1, "Chauffeur TS": 1, "Manschap": 4}
+    ASP = {"Asp. Manschap": 1, "Asp. manschap": 1}
     labels = {f["id"]: f["label"] for f in functies}
+    streef = {fid: STREEF[labels[fid]] for fid in labels if labels[fid] in STREEF}
+    asp = {fid: ASP[labels[fid]] for fid in labels if labels[fid] in ASP}
+    for f in functies:
+        f["streef"] = STREEF.get(f["label"], ASP.get(f["label"], 0))
+    volg = set(ts) | set(streef) | set(asp)
+
+    # 2. Vooruitblik: per kwartier of de TS de komende periode op ondergrens én op streefsterkte kan uitrukken
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
-    ok = [[0] * 24 for _ in range(7)]; tot = [[0] * 24 for _ in range(7)]
-    ok_f = {fid: 0 for fid in ts}; n_slots = 0            # per functie: aantal kwartieren voldoende bezet
+    ok = [[0] * 24 for _ in range(7)]; tot = [[0] * 24 for _ in range(7)]   # ondergrens
+    ok_s = [[0] * 24 for _ in range(7)]                                      # streefsterkte
+    ok_f = {fid: 0 for fid in ts}; n_slots = 0
+    n_ond = n_str = n_sas = 0                                                # kwartieren die elke sterkte halen
     for i in range(0, len(toekomst), 7):
         blok = bezetting(s, toekomst[i:i + 7])
         per_dag = {}
         for item in blok.get("AvailablePeople") or []:
             fid, dag = item.get("ServiceFunctionID"), item.get("DateOfDay")
-            if fid in ts and dag:
+            if fid in volg and dag:
                 per_dag.setdefault(dag, {})[fid] = {slot_index(c["K"]): c["V"] for c in item.get("DayCounters", [])}
-        for dag, f in per_dag.items():
+        for dag, fcounts in per_dag.items():
             d = datetime.strptime(dag, "%y%m%d"); wd = d.weekday()
             for slot in range(96):
-                bezet = all(f.get(fid, {}).get(slot, 0) >= nodig for fid, nodig in ts.items())
-                tot[wd][slot // 4] += 1; ok[wd][slot // 4] += bezet
-                n_slots += 1
-                for fid, nodig in ts.items():
-                    if f.get(fid, {}).get(slot, 0) >= nodig:
+                av = lambda fid: fcounts.get(fid, {}).get(slot, 0)
+                bezet   = all(av(fid) >= n for fid, n in ts.items())
+                bezet_s = bool(streef) and all(av(fid) >= n for fid, n in streef.items())
+                bezet_a = bezet_s and all(av(fid) >= n for fid, n in asp.items())
+                tot[wd][slot // 4] += 1
+                ok[wd][slot // 4] += bezet
+                ok_s[wd][slot // 4] += bezet_s
+                n_slots += 1; n_ond += bezet; n_str += bezet_s; n_sas += bezet_a
+                for fid, n in ts.items():
+                    if av(fid) >= n:
                         ok_f[fid] += 1
-    heatmap = [[round(100 * ok[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
+    heatmap        = [[round(100 * ok[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
+    heatmap_streef = [[round(100 * ok_s[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
     alle_ok = sum(map(sum, ok)); alle = sum(map(sum, tot))
-    # Dekking per functie over de hele periode; de laagste is de 'smalste schakel'.
+    # Dekking per functie over de hele periode (ondergrens); de laagste is de 'smalste schakel'.
     dekking_per_rol = sorted(
         ({"label": labels.get(fid, str(fid)), "pct": round(100 * ok_f[fid] / n_slots)} for fid in ts),
         key=lambda r: r["pct"]) if n_slots else []
+    pct = lambda x: round(100 * x / n_slots) if n_slots else None
+    sterkte = {
+        "ondergrens": {"eis": 4, "pct": pct(n_ond)},
+        "streef":     {"eis": 6, "pct": pct(n_str)},
+        "streef_asp": {"eis": 7, "pct": pct(n_sas)},
+    }
 
     uit = {
         "bron": "Pre-Com",
@@ -134,13 +159,16 @@ def main():
         "ts_bezet_pct": round(100 * alle_ok / alle) if alle else None,
         "periode_dagen": DAGEN,
         "heatmap": heatmap,
+        "heatmap_streef": heatmap_streef,
+        "sterkte": sterkte,
         "dekking_per_rol": dekking_per_rol,
     }
     with open(UIT, "w", encoding="utf-8") as fh:
         fh.write("/* Automatisch gegenereerd uit Pre-Com — alleen aantallen, geen namen. Niet handmatig bewerken. */\n")
         fh.write("window.NBL_BEZETTING = " + json.dumps(uit, ensure_ascii=False) + ";\n")
     print("OK:", ", ".join(f"{f['label']} {f['beschikbaar']}/{f['nodig']}" for f in functies),
-          f"| TS bezet {uit['ts_bezet_pct']}% over {DAGEN} dagen")
+          f"| ondergrens {sterkte['ondergrens']['pct']}% · streefsterkte {sterkte['streef']['pct']}%"
+          f" · +asp {sterkte['streef_asp']['pct']}% over {DAGEN} dagen")
 
 
 if __name__ == "__main__":

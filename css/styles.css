@@ -234,6 +234,11 @@ td .em{color:var(--slate);font-size:13px}
 #dash table.besch tr.totaal td{border-top:2px solid var(--graphite);border-bottom:0;padding-top:14px}
 #dash table.besch tr.totaal td b{font-family:var(--font-display);font-size:16px}
 
+/* sterkte-rooster (Paraatheid) */
+#dash #sterkte{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+#dash #sterkte .tegel .vl{font-size:36px}
+@media(max-width:820px){#dash #sterkte{grid-template-columns:1fr}}
+
 /* placeholder (Mijn uitrukken) */
 .leeg{text-align:center;color:var(--slate);padding:48px 20px}
 .leeg b{display:block;color:var(--ink);font-family:var(--font-display);font-size:22px;margin-bottom:6px}

@@ -17,7 +17,7 @@ const flow = hash.get('type');
 let herstelModus = (flow === 'recovery' || flow === 'invite');
 
 /* ============ TABBLADEN ============ */
-const TABS = ['overzicht','beschikbaarheid','uitrukken','mijn'];
+const TABS = ['overzicht','beschikbaarheid','paraatheid','uitrukken','mijn'];
 let tabHuidig = 'overzicht';
 function toonTab(naam){
   tabHuidig = naam;

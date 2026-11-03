@@ -92,6 +92,7 @@
     <div class="wrap">
       <button class="tabknop" data-tab="overzicht" aria-selected="true">Overzicht</button>
       <button class="tabknop" data-tab="beschikbaarheid" aria-selected="false">Beschikbaarheid</button>
+      <button class="tabknop" data-tab="paraatheid" aria-selected="false">Paraatheid</button>
       <button class="tabknop" data-tab="uitrukken" aria-selected="false">Uitrukken en opkomst</button>
       <button class="tabknop" data-tab="mijn" aria-selected="false">Mijn uitrukken</button>
     </div>
@@ -132,22 +133,31 @@
           </div>
           <p class="uitleg" style="margin-top:12px">Gesorteerd op beschikbare uren overdag op werkdagen (ma–vr, 07:00–18:00). Overig = avond, nacht en weekend. % = aandeel van alle uitrukken in die categorie waarbij iemand mee is geweest. Beschikbaarheid volgens Pre-Com ('niet afgemeld' telt als beschikbaar).</p>
         </section>
+      </div>
+
+      <!-- ===== Paraatheid (Pre-Com, vooruitblik) ===== -->
+      <div class="view" id="view-paraatheid" hidden>
+        <section class="sectie">
+          <div class="sk"><h2>Sterkte komende 28 dagen</h2><small id="sterkteBron"></small></div>
+          <p class="uitleg" style="margin:-6px 0 16px">De volwaardige TS bestaat uit <b>6 leden</b> (bevelvoerder, chauffeur, 4 manschappen) plus <b>1 aspirant</b>. De <b>ondergrens</b> om te mogen uitrukken is <b>4</b> (bevelvoerder, chauffeur, 2 manschappen) — krapper kan niet. Hieronder hoe vaak elke sterkte de komende periode haalbaar is volgens Pre-Com.</p>
+          <div id="sterkte"></div>
+        </section>
 
         <section class="sectie">
-          <div class="sk"><h2>Paraatheid (Pre-Com)</h2><small id="hmBron">Gemiddelde afgelopen 3 maanden</small></div>
+          <div class="sk"><h2>Paraatheid (Pre-Com)</h2><small id="hmBron"></small></div>
           <div class="kaart">
-            <h3>TS volledig bezet, per weekdag en uur</h3>
-            <p class="uitleg">Hoe donkerder het vak, hoe vaker er genoeg mensen beschikbaar waren. Lichte vakken zijn de kwetsbare momenten.</p>
+            <h3>Volledige TS beschikbaar, per weekdag en uur</h3>
+            <p class="uitleg">Hoe donkerder het vak, hoe vaker de <b>volledige TS (6)</b> de komende periode beschikbaar is. Lichte vakken zijn de kwetsbare momenten waarop we onder streefsterkte zakken.</p>
             <div class="hm" id="heatmap"></div>
-            <div class="schaal"><span id="hmMin"></span><div class="grad"></div><span>100% volledig bezet</span></div>
+            <div class="schaal"><span id="hmMin"></span><div class="grad"></div><span>100% op streefsterkte</span></div>
           </div>
           <div class="rooster r2g" style="margin-top:20px">
             <div class="kaart"><h3>Dekking dag en nacht</h3>
-              <p class="uitleg">Aandeel van de tijd dat de TS volledig bezet is, komende periode. Dag = 08–18 uur.</p>
+              <p class="uitleg">Aandeel van de tijd dat de volledige TS (6) beschikbaar is, komende periode. Dag = 08–18 uur.</p>
               <div class="duo" id="dagnacht"></div>
               <div id="vensters"></div></div>
             <div class="kaart"><h3>Dekking per functie</h3>
-              <p class="uitleg">Hoe vaak elke functie de komende periode bezet is. De laagste is de smalste schakel.</p>
+              <p class="uitleg">Hoe vaak elke functie de komende periode minstens de ondergrens haalt. De laagste is de smalste schakel.</p>
               <div class="typen" id="perRol"></div></div>
           </div>
         </section>
@@ -162,7 +172,7 @@
               <div class="legenda" style="margin-top:6px"><span><i style="background:var(--ink)"></i><span id="lgJaar"></span></span><span><i style="background:#D6D3CD"></i><span id="lgVorig"></span></span></div>
               <svg id="grafUitruk" width="100%" height="220" role="img" aria-label="Uitrukken per maand"></svg></div>
             <div class="kaart"><h3>Gemiddelde uitruktijd</h3>
-              <p class="uitleg" style="margin-bottom:14px">Van alarmering tot uitruk, in minuten.</p>
+              <p class="uitleg" style="margin-bottom:14px">Van alarmering tot uitruk, in minuten. De streefwaarde van 4:00 geldt alleen voor <b>P1</b> (maatgevende incidenten, geen reanimatie); P2 valt buiten deze ambitie.</p>
               <svg id="grafTijd" width="100%" height="220" role="img" aria-label="Gemiddelde uitruktijd per maand"></svg></div>
           </div>
           <div class="rooster r2g" style="margin-top:20px">
@@ -179,7 +189,7 @@
             <div class="kaart"><h3>Spreiding uitruktijd</h3><p class="uitleg">Niet alleen het gemiddelde — hoe betrouwbaar is de opkomsttijd?</p><div id="spreiding"></div></div>
           </div>
           <div style="margin-top:20px">
-            <div class="kaart"><h3>Recente uitrukken</h3><p class="uitleg">De laatste uitrukken, met uitruktijd en bezetting op de TS. Boven de streefwaarde is rood gemarkeerd.</p>
+            <div class="kaart"><h3>Recente uitrukken</h3><p class="uitleg">De laatste uitrukken, met uitruktijd en bezetting op de TS. Alleen bij P1 is boven de streefwaarde (4:00) rood gemarkeerd — P2 valt buiten die ambitie.</p>
               <div class="tabelwrap"><table><thead><tr><th>Datum</th><th>Prio</th><th>Melding</th><th class="r">Uitruktijd</th><th class="r">Bezetting</th></tr></thead><tbody id="recent"></tbody></table></div></div>
           </div>
         </section>
