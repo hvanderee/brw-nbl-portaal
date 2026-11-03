@@ -238,8 +238,13 @@
       <!-- ===== Mijn uitrukken ===== -->
       <div class="view" id="view-mijn" hidden>
         <section class="sectie">
-          <div class="sk"><h2>Mijn uitrukken</h2></div>
-          <div class="kaart"><div class="leeg"><b>Binnenkort</b>Hier komt jouw persoonlijke overzicht: al je uitrukken van dit jaar en de historie. Hiervoor koppelen we je account aan je ploeglid-gegevens.</div></div>
+          <div class="sk"><h2>Mijn uitrukken</h2><span class="bron" id="mijn-bron"></span></div>
+          <div class="rooster r4" id="mijn-kpis"></div>
+        </section>
+        <section class="sectie" style="margin-top:20px">
+          <div class="kaart"><h3>Overzicht</h3><p class="uitleg">Jouw uitrukken uit Veiligheidspaspoort, nieuwste eerst. “Uitgerukt” = met de TS mee; “Kazerne” = wel opgekomen, niet uitgerukt.</p>
+            <div class="tabelwrap"><table><thead><tr><th>Datum</th><th>Prio</th><th>Melding</th><th>Plaats</th><th>Mijn functie</th><th class="r">Opkomst</th></tr></thead><tbody id="mijn-body"></tbody></table></div>
+          </div>
         </section>
       </div>
 
