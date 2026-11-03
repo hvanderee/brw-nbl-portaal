@@ -82,14 +82,13 @@ function renderBeschikbaarheid(){
   const body = $("#besch-body"); if(!body) return;
   body.innerHTML = B.leden.map(l=>`<tr>
       <td><span class="nm">${l.naam}</span></td>
-      <td class="r">${fmtN(l.uren_totaal)} u</td>
-      <td class="r"><b>${fmtN(l.uren_odw)} u</b></td>
-      <td class="r dim">${l.pct_uren_odw}%</td>
-      <td class="r">${l.mee_totaal}×</td><td class="r dim">${l.pct_mee_totaal}%</td>
-      <td class="r"><b>${l.mee_odw}×</b></td><td class="r dim">${l.pct_mee_odw}%</td>
-      <td class="r">${l.mee_overig}×</td><td class="r dim">${l.pct_mee_overig}%</td>
+      <td class="r">${fmtN(l.uren_totaal)}<span class="eh">u</span></td>
+      <td class="r kol-sort"><b>${fmtN(l.uren_odw)}<span class="eh">u</span></b><span class="pct">${l.pct_uren_odw}%</span></td>
+      <td class="r sep"><b>${l.mee_totaal}<span class="eh">×</span></b><span class="pct">${l.pct_mee_totaal}%</span></td>
+      <td class="r"><b>${l.mee_odw}<span class="eh">×</span></b><span class="pct">${l.pct_mee_odw}%</span></td>
+      <td class="r"><b>${l.mee_overig}<span class="eh">×</span></b><span class="pct">${l.pct_mee_overig}%</span></td>
     </tr>`).join("")
-    + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r"><b>${fmtN(m.ploeg_uren_totaal)} u</b></td><td class="r"><b>${fmtN(m.ploeg_uren_odw)} u</b></td><td class="r"><b>${m.ploeg_pct_odw}%</b></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+    + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r">${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span></td><td class="r kol-sort"><b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span></td><td class="r sep"></td><td class="r"></td><td class="r"></td></tr>`;
 }
 
 function balken(id,rows,opt){

@@ -60,6 +60,9 @@ header{background:var(--ink);color:var(--white);border-bottom:3px solid var(--re
 .knop-licht{height:36px;padding:0 14px;border-radius:8px;border:1px solid #3A424B;background:transparent;color:#fff;font-size:14px;font-weight:500;cursor:pointer}
 .knop-licht:hover{background:var(--graphite)}
 main{padding:36px 0 48px}
+/* sticky footer: footer onderaan houden, ook als de pagina weinig inhoud heeft */
+#app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+#app>main{flex:1 0 auto}
 .sectie{margin-top:28px}
 .kaart{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:24px}
 .kaart h3{font-size:20px;margin-bottom:8px}
@@ -215,9 +218,21 @@ td .em{color:var(--slate);font-size:13px}
 #dash,#view-beheer{padding-top:28px}
 
 /* beschikbaarheidstabel */
-#dash table.besch td,#dash table.besch th{white-space:nowrap}
-#dash table.besch tr.totaal td{border-top:2px solid var(--line);border-bottom:0;padding-top:12px}
-#besch-meta{font-size:13px;color:var(--slate);margin-top:-6px}
+#besch-meta{font-size:13px;color:var(--slate);margin-top:-6px;margin-bottom:16px}
+#dash table.besch{font-size:14px}
+#dash table.besch th,#dash table.besch td{white-space:nowrap;padding:13px 16px;font-variant-numeric:tabular-nums}
+#dash table.besch th{vertical-align:bottom;line-height:1.25}
+#dash table.besch th span{display:block;font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--dim);margin-top:3px}
+#dash table.besch td.r,#dash table.besch th.r{padding-right:16px}
+#dash table.besch td .eh{font-size:.8em;color:var(--dim);font-weight:400;margin-left:1px}
+#dash table.besch td .pct{color:var(--slate);font-size:.92em;margin-left:7px}
+#dash table.besch .sep{border-left:1px solid var(--line)}
+#dash table.besch .kol-sort{background:rgba(207,49,27,.05)}
+#dash table.besch thead .kol-sort{background:rgba(207,49,27,.08)}
+#dash table.besch tbody tr:not(.totaal):hover td{background:var(--surface)}
+#dash table.besch tbody tr:not(.totaal):hover td.kol-sort{background:rgba(207,49,27,.09)}
+#dash table.besch tr.totaal td{border-top:2px solid var(--graphite);border-bottom:0;padding-top:14px}
+#dash table.besch tr.totaal td b{font-family:var(--font-display);font-size:16px}
 
 /* placeholder (Mijn uitrukken) */
 .leeg{text-align:center;color:var(--slate);padding:48px 20px}
