@@ -145,6 +145,15 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
   }
   const volg = new Set<number>([...Object.keys(ts), ...Object.keys(streef), ...Object.keys(asp)].map(Number));
 
+  // functie-id's voor de bezettingsgraad (5 niveaus)
+  const idBev = functies.find((f) => f.label === "Bevelvoerder")?.id;
+  const idChf = functies.find((f) => f.label === "Chauffeur TS")?.id;
+  const idMan = functies.find((f) => f.label === "Manschap")?.id;
+  const idAsp = functies.find((f) => f.label === "Asp. Manschap" || f.label === "Asp. manschap")?.id;
+  // 0 onvoldoende(rood) 1 ondergrens 4(oranje) 2 krap 5(lichtgroen) 3 volwaardig 6(groen) 4 volledig 6+asp(donkergroen)
+  const tierVan = (b: number, c: number, m: number, a: number) =>
+    (b < 1 || c < 1 || m < 2) ? 0 : m === 2 ? 1 : m === 3 ? 2 : (a >= 1 ? 4 : 3);
+
   // 2. Vooruitblik: per kwartier ondergrens én streefsterkte
   const toekomst = datesForward(DAGEN);
   const ok = Array.from({ length: 7 }, () => new Array(24).fill(0));
@@ -153,6 +162,8 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
   const okF: Record<number, number> = {};
   for (const fid of Object.keys(ts)) okF[Number(fid)] = 0;
   let nSlots = 0, nOnd = 0, nStr = 0, nSas = 0;
+  const tierTot = [0, 0, 0, 0, 0];                                      // aantal kwartieren per niveau
+  const tierSom = Array.from({ length: 7 }, () => new Array(24).fill(0)); // som van niveaus per weekdag/uur
 
   for (let i = 0; i < toekomst.length; i += 7) {
     const blok = await getOccupancy(toekomst.slice(i, i + 7));
@@ -180,6 +191,8 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
         tot[wd][u]++; if (bezet) ok[wd][u]++; if (bezetS) okS[wd][u]++;
         nSlots++; if (bezet) nOnd++; if (bezetS) nStr++; if (bezetA) nSas++;
         for (const [fid, n] of Object.entries(ts)) if (av(Number(fid)) >= n) okF[Number(fid)]++;
+        const t = tierVan(idBev ? av(idBev) : 0, idChf ? av(idChf) : 0, idMan ? av(idMan) : 0, idAsp ? av(idAsp) : 0);
+        tierTot[t]++; tierSom[wd][u] += t;
       }
     }
   }
@@ -197,6 +210,10 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
     streef: { eis: 6, pct: pct(nStr) },
     streef_asp: { eis: 7, pct: pct(nSas) },
   };
+  // Bezettingsgraad: gemiddeld niveau per weekdag/uur (0..4, 1 decimaal) + verdeling over de 5 niveaus
+  const heatmapTier = tierSom.map((row, d) => row.map((v, u) => tot[d][u] ? Math.round(10 * v / tot[d][u]) / 10 : null));
+  const tierLabels = ["Onvoldoende", "Ondergrens · 4", "Krap · 5", "Volwaardig · 6", "Volledig · 6 + aspirant"];
+  const tierVerdeling = tierTot.map((n, i) => ({ tier: i, label: tierLabels[i], pct: pct(n) }));
 
   return {
     bron: "Pre-Com",
@@ -206,6 +223,8 @@ async function bouwBezetting(): Promise<Record<string, unknown>> {
     periode_dagen: DAGEN,
     heatmap,
     heatmap_streef: heatmapStreef,
+    heatmap_tier: heatmapTier,
+    tier_verdeling: tierVerdeling,
     sterkte,
     dekking_per_rol: dekkingPerRol,
   };

@@ -111,12 +111,23 @@ def main():
         f["streef"] = STREEF.get(f["label"], ASP.get(f["label"], 0))
     volg = set(ts) | set(streef) | set(asp)
 
+    # functie-id's voor de bezettingsgraad (5 niveaus)
+    id_bev = next((f["id"] for f in functies if f["label"] == "Bevelvoerder"), None)
+    id_chf = next((f["id"] for f in functies if f["label"] == "Chauffeur TS"), None)
+    id_man = next((f["id"] for f in functies if f["label"] == "Manschap"), None)
+    id_asp = next((f["id"] for f in functies if f["label"] in ("Asp. Manschap", "Asp. manschap")), None)
+    # 0 onvoldoende 1 ondergrens(4) 2 krap(5) 3 volwaardig(6) 4 volledig(6+asp)
+    def tier_van(b, c, m, a):
+        return 0 if (b < 1 or c < 1 or m < 2) else 1 if m == 2 else 2 if m == 3 else (4 if a >= 1 else 3)
+
     # 2. Vooruitblik: per kwartier of de TS de komende periode op ondergrens én op streefsterkte kan uitrukken
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
     ok = [[0] * 24 for _ in range(7)]; tot = [[0] * 24 for _ in range(7)]   # ondergrens
     ok_s = [[0] * 24 for _ in range(7)]                                      # streefsterkte
     ok_f = {fid: 0 for fid in ts}; n_slots = 0
     n_ond = n_str = n_sas = 0                                                # kwartieren die elke sterkte halen
+    tier_tot = [0, 0, 0, 0, 0]                                               # kwartieren per niveau
+    tier_som = [[0] * 24 for _ in range(7)]                                  # som van niveaus per weekdag/uur
     for i in range(0, len(toekomst), 7):
         blok = bezetting(s, toekomst[i:i + 7])
         per_dag = {}
@@ -138,8 +149,12 @@ def main():
                 for fid, n in ts.items():
                     if av(fid) >= n:
                         ok_f[fid] += 1
+                t = tier_van(av(id_bev) if id_bev else 0, av(id_chf) if id_chf else 0,
+                             av(id_man) if id_man else 0, av(id_asp) if id_asp else 0)
+                tier_tot[t] += 1; tier_som[wd][slot // 4] += t
     heatmap        = [[round(100 * ok[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
     heatmap_streef = [[round(100 * ok_s[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
+    heatmap_tier   = [[round(10 * tier_som[d][u] / tot[d][u]) / 10 if tot[d][u] else None for u in range(24)] for d in range(7)]
     alle_ok = sum(map(sum, ok)); alle = sum(map(sum, tot))
     # Dekking per functie over de hele periode (ondergrens); de laagste is de 'smalste schakel'.
     dekking_per_rol = sorted(
@@ -151,6 +166,8 @@ def main():
         "streef":     {"eis": 6, "pct": pct(n_str)},
         "streef_asp": {"eis": 7, "pct": pct(n_sas)},
     }
+    _tlab = ["Onvoldoende", "Ondergrens · 4", "Krap · 5", "Volwaardig · 6", "Volledig · 6 + aspirant"]
+    tier_verdeling = [{"tier": i, "label": _tlab[i], "pct": pct(n)} for i, n in enumerate(tier_tot)]
 
     uit = {
         "bron": "Pre-Com",
@@ -160,6 +177,8 @@ def main():
         "periode_dagen": DAGEN,
         "heatmap": heatmap,
         "heatmap_streef": heatmap_streef,
+        "heatmap_tier": heatmap_tier,
+        "tier_verdeling": tier_verdeling,
         "sterkte": sterkte,
         "dekking_per_rol": dekking_per_rol,
     }

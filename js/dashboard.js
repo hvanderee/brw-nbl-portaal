@@ -6,6 +6,16 @@ const $ = s => document.querySelector(s);
 const D = window.NBL_DATA;
 const MND = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
 const DAG = ["ma","di","wo","do","vr","za","zo"];
+// Bezettingsgraad — 5 niveaus (rood → donkergroen)
+const TIERKLEUR = ["#CF311B","#E8820E","#86C98E","#2F7D4F","#13482C"];
+const TIERNAAM  = ["Onvoldoende","Ondergrens · 4","Krap · 5","Volwaardig · 6","Volledig · 6 + aspirant"];
+function _hx(h){ return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); }
+function tierKleur(v){
+  if(v==null) return "#EDEFF0";
+  const x=Math.max(0,Math.min(4,v)), lo=Math.floor(x), hi=Math.ceil(x), t=x-lo;
+  const a=_hx(TIERKLEUR[lo]), b=_hx(TIERKLEUR[hi]);
+  return `rgb(${a.map((c,i)=>Math.round(c+(b[i]-c)*t)).join(",")})`;
+}
 const fmtMin = m => { const s = Math.round(m*60); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0"); };
 const fmtN   = n => Number(n).toLocaleString('nl-NL');
 const nlDat  = s => new Date(s).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
@@ -55,14 +65,21 @@ function teken(){
   renderBeschikbaarheid();
   renderSterkte();
 
-  const HM=B&&(B.heatmap_streef||B.heatmap)?(B.heatmap_streef||B.heatmap):D.heatmap, alle=HM.flat().filter(v=>v!=null), lo=Math.min(99,...alle);
-  $("#hmMin").textContent = lo+"%";
-  const kleur = v => { const t=(v-lo)/(100-lo||1); const a=[237,239,240], b=[17,24,32]; return `rgb(${a.map((x,i)=>Math.round(x+(b[i]-x)*t)).join(",")})`; };
+  const tierMode = !!(B && B.heatmap_tier);
+  const HM = tierMode ? B.heatmap_tier : (B&&(B.heatmap_streef||B.heatmap)?(B.heatmap_streef||B.heatmap):D.heatmap);
+  const lo = Math.min(99, ...HM.flat().filter(v=>v!=null), 99);
+  const grijs = v => { const t=(v-lo)/(100-lo||1); const a=[237,239,240], b=[17,24,32]; return `rgb(${a.map((x,i)=>Math.round(x+(b[i]-x)*t)).join(",")})`; };
+  const cel = v => tierMode ? tierKleur(v) : grijs(v);
+  const uur = u => `${String(u).padStart(2,"0")}:00–${String(u+1).padStart(2,"0")}:00`;
+  const celTip = (d,u,v) => tierMode ? `${DAG[d]} ${uur(u)} · ${TIERNAAM[Math.round(v)]}` : `${DAG[d]} ${uur(u)} · ${v}% volledige TS`;
   let h='<div></div>'; for(let u=0;u<24;u++) h+=`<div class="u">${u}</div>`;
   HM.forEach((rij,d)=>{ h+=`<div class="d">${DAG[d]}</div>`;
-    rij.forEach((v,u)=>h+=v==null?`<div class="c" style="background:#EDEFF0"></div>`:`<div class="c" style="background:${kleur(v)}" data-t="${DAG[d]} ${String(u).padStart(2,"0")}:00–${String(u+1).padStart(2,"0")}:00 · ${v}% volledige TS"></div>`); });
+    rij.forEach((v,u)=>h+=v==null?`<div class="c" style="background:#EDEFF0"></div>`:`<div class="c" style="background:${cel(v)}" data-t="${celTip(d,u,v)}"></div>`); });
   const hm=$("#heatmap"); if(hm){ hm.innerHTML=h;
     hm.addEventListener("mousemove",e=>{const c=e.target.closest(".c"); c?toonTip(e,c.dataset.t):verberg();}); hm.addEventListener("mouseleave",verberg); }
+  const sch=$("#hmSchaal"); if(sch) sch.innerHTML = tierMode
+    ? TIERNAAM.map((nm,i)=>`<span class="tlegend"><i style="background:${TIERKLEUR[i]}"></i>${nm}</span>`).join("")
+    : `<span>${lo}%</span><div class="grad"></div><span>100% volledige TS</span>`;
 
   $("#lgJaar").textContent=D.jaar; $("#lgVorig").textContent=D.jaar-1;
 
@@ -95,21 +112,26 @@ function renderBeschikbaarheid(){
 
 function renderSterkte(){
   const B = window.NBL_BEZETTING, box = $("#sterkte"); if(!box) return;
-  const sb = $("#sterkteBron"); if(sb && B) sb.textContent = "Komende "+(B.periode_dagen||28)+" dagen · bron Pre-Com";
+  const dgn = (B && B.periode_dagen) || 28;
+  const sb = $("#sterkteBron"); if(sb && B) sb.textContent = "Komende "+dgn+" dagen · bron Pre-Com";
+  const tv = B && B.tier_verdeling;
+  if(tv && tv.length){
+    box.innerHTML = tv.slice().reverse().map(r=>{ const p = r.pct==null?0:r.pct, kl = TIERKLEUR[r.tier];
+      return `<div class="tier-rij"><div class="tier-kop"><span class="tier-naam"><i style="background:${kl}"></i>${r.label}</span><b>${r.pct==null?"–":p+"%"}</b></div><div class="balk"><i style="width:${p}%;background:${kl}"></i></div></div>`;
+    }).join("")
+      + `<p class="uitleg" style="margin:14px 0 0">Aandeel van de komende ${dgn} dagen dat de post op dat niveau kan uitrukken, volgens Pre-Com-beschikbaarheid. Elk kwartier telt mee op het hoogste niveau dat haalbaar is.</p>`;
+    return;
+  }
   const s = B && B.sterkte;
   if(!s){ box.innerHTML = '<p class="geen">Vooruitblik op sterkte wordt bij de volgende Pre-Com-verversing toegevoegd.</p>'; return; }
-  const dgn = B.periode_dagen||28;
   const items = [
-    ["Ondergrens · 4 leden","Bevelvoerder, chauffeur, 2 manschappen — krapst mogelijk", s.ondergrens],
-    ["Streefsterkte · 6 leden","Bevelvoerder, chauffeur, 4 manschappen — volwaardige TS", s.streef],
-    ["Volledig · 6 + aspirant","Streefsterkte plus 1 aspirant-manschap", s.streef_asp],
+    ["Ondergrens · 4 leden","Bevelvoerder, chauffeur, 2 manschappen", s.ondergrens],
+    ["Streefsterkte · 6 leden","Bevelvoerder, chauffeur, 4 manschappen", s.streef],
+    ["Volledig · 6 + aspirant","Streefsterkte plus 1 aspirant", s.streef_asp],
   ];
   box.innerHTML = items.map(([t,sub,o])=>{ const p = o && o.pct!=null ? o.pct : null;
     const kleur = p==null?"var(--ink)":(p>=90?"var(--groen)":p>=60?"var(--gold)":"var(--red-accessible)");
-    return `<div class="tegel"><div class="nm"><b>${t}</b><br>${sub}</div>`
-      + `<div class="vl" style="color:${kleur}">${p==null?"–":p+"%"}</div>`
-      + `<div class="balk"><i style="width:${p||0}%;background:${kleur}"></i></div>`
-      + `<div class="nm" style="margin-top:7px">van de tijd beschikbaar · komende ${dgn} dagen</div></div>`;
+    return `<div class="tegel"><div class="nm"><b>${t}</b><br>${sub}</div><div class="vl" style="color:${kleur}">${p==null?"–":p+"%"}</div><div class="balk"><i style="width:${p||0}%;background:${kleur}"></i></div></div>`;
   }).join("");
 }
 function balken(id,rows,opt){
@@ -121,22 +143,25 @@ function balken(id,rows,opt){
 }
 function widgets(){
   const B=window.NBL_BEZETTING||null;
-  const HMW = B ? (B.heatmap_streef||B.heatmap) : null;
+  const tierMode = !!(B && B.heatmap_tier);
+  const HMW = B ? (tierMode ? B.heatmap_tier : (B.heatmap_streef||B.heatmap)) : null;
   if(B&&HMW){
     let dOk=0,dN=0,nOk=0,nN=0;
     HMW.forEach(rij=>rij.forEach((v,u)=>{ if(v==null)return; if(u>=8&&u<18){dN++;dOk+=v;}else{nN++;nOk+=v;} }));
-    const dag=dN?Math.round(dOk/dN):null, nacht=nN?Math.round(nOk/nN):null, dn=$("#dagnacht");
-    if(dn) dn.innerHTML=[["Overdag","08–18 uur",dag],["'s Nachts","18–08 uur",nacht]].map(([t,sb,v])=>
-      `<div class="tegel"><div class="nm">${t} · ${sb}</div><div class="vl">${v==null?"–":v+"%"}</div><div class="balk"><i style="width:${v||0}%"></i></div></div>`).join("");
+    const dag=dN?dOk/dN:null, nacht=nN?nOk/nN:null, dn=$("#dagnacht");
+    if(dn) dn.innerHTML=[["Overdag","08–18 uur",dag],["'s Nachts","18–08 uur",nacht]].map(([t,sb,v])=>{
+      if(tierMode){ const kl=tierKleur(v); return `<div class="tegel"><div class="nm">${t} · ${sb}</div><div class="vl" style="font-size:20px;color:${kl}">${v==null?"–":TIERNAAM[Math.round(v)]}</div><div class="balk"><i style="width:${v==null?0:Math.round(v/4*100)}%;background:${kl}"></i></div></div>`; }
+      return `<div class="tegel"><div class="nm">${t} · ${sb}</div><div class="vl">${v==null?"–":Math.round(v)+"%"}</div><div class="balk"><i style="width:${v==null?0:Math.round(v)}%"></i></div></div>`;
+    }).join("");
     const vs=[];
     HMW.forEach((rij,d)=>{ let st=null;
-      for(let u=0;u<=24;u++){ const bad=u<24&&rij[u]!=null&&rij[u]<100;
+      for(let u=0;u<=24;u++){ const v=u<24?rij[u]:null; const bad = tierMode ? (v!=null&&v<2) : (v!=null&&v<100);
         if(bad&&st==null)st=u; else if(!bad&&st!=null){ const seg=rij.slice(st,u).filter(x=>x!=null); vs.push([DAG[d],st,u,Math.min(...seg)]); st=null; } } });
     vs.sort((a,b)=>a[3]-b[3]);
     const vb=$("#vensters");
     if(vb) vb.innerHTML = vs.length
-      ? '<p class="uitleg" style="margin:16px 0 8px">Kwetsbaarste momenten komende periode</p><ul class="vensters">'+vs.slice(0,5).map(([d,a,b,lo])=>`<li><span>${d} ${String(a).padStart(2,"0")}:00–${String(b).padStart(2,"0")}:00</span><span class="pct">${lo}%</span></li>`).join("")+'</ul>'
-      : '<p class="geen" style="margin-top:16px"><b>Geen kwetsbare momenten.</b> De TS is de hele periode volledig bezet.</p>';
+      ? '<p class="uitleg" style="margin:16px 0 8px">Krapste momenten komende periode</p><ul class="vensters">'+vs.slice(0,5).map(([d,a,b,lo])=>`<li><span>${d} ${String(a).padStart(2,"0")}:00–${String(b).padStart(2,"0")}:00</span><span class="pct">${tierMode?TIERNAAM[Math.round(lo)]:lo+"%"}</span></li>`).join("")+'</ul>'
+      : `<p class="geen" style="margin-top:16px"><b>Geen krappe momenten.</b> ${tierMode?"De post haalt de hele periode minstens krapte-sterkte.":"De TS is de hele periode volledig bezet."}</p>`;
   }
   if(B&&B.dekking_per_rol&&B.dekking_per_rol.length){
     const _r=B.dekking_per_rol,_mn=Math.min(..._r.map(x=>x.pct)),_mx=Math.max(..._r.map(x=>x.pct));

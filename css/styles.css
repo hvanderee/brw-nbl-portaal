@@ -234,10 +234,18 @@ td .em{color:var(--slate);font-size:13px}
 #dash table.besch tr.totaal td{border-top:2px solid var(--graphite);border-bottom:0;padding-top:14px}
 #dash table.besch tr.totaal td b{font-family:var(--font-display);font-size:16px}
 
-/* sterkte-rooster (Paraatheid) */
-#dash #sterkte{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-#dash #sterkte .tegel .vl{font-size:36px}
-@media(max-width:820px){#dash #sterkte{grid-template-columns:1fr}}
+/* bezettingsgraad (Paraatheid) — 5 niveaus */
+#dash #sterkte{display:flex;flex-direction:column;gap:13px}
+#dash .tier-rij .tier-kop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+#dash .tier-naam{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;color:var(--ink)}
+#dash .tier-naam i{width:13px;height:13px;border-radius:3px;flex:none}
+#dash .tier-rij .tier-kop b{font-family:var(--font-display);font-weight:700;font-size:19px}
+#dash #sterkte .tegel{display:block}
+#dash #sterkte .tegel .vl{font-size:30px}
+/* heatmap-legenda (5 niveaus) */
+#dash .schaal{flex-wrap:wrap}
+#dash .schaal .tlegend{display:inline-flex;align-items:center;gap:6px;margin-right:16px;font-size:12px;color:var(--slate)}
+#dash .schaal .tlegend i{width:12px;height:12px;border-radius:3px;display:inline-block}
 
 /* placeholder (Mijn uitrukken) */
 .leeg{text-align:center;color:var(--slate);padding:48px 20px}
