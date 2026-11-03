@@ -128,12 +128,33 @@ function vertaalFout(m){
 }
 
 /* ============ PLOEGLEDENBEHEER ============ */
+let accountStatus = {};   // lid.id -> 'geen' | 'uitgenodigd' | 'actief'
+
 async function laadLeden(){
   melding('#leden-melding','');
   const { data, error } = await supabase.from('leden').select('*').order('volgorde', { ascending:true });
   if(error){ melding('#leden-melding', vertaalFout(error.message), 'fout'); return; }
   leden = data || [];
   renderLeden();
+  laadAccountStatus();
+}
+
+/* Accountstatus per lid ophalen via de beveiligde Edge Function (alleen beheerder). */
+async function laadAccountStatus(){
+  try{
+    const { data, error } = await supabase.functions.invoke('ploeg-beheer', { body:{ action:'status' } });
+    if(!error && data && data.ok){ accountStatus = data.status || {}; renderLeden(); }
+  }catch(e){ /* stil: kolom toont dan "…" */ }
+}
+
+function accountCel(l){
+  const s = accountStatus[l.id];
+  const groen = 'background:#E6F2EB;color:var(--groen);border-color:#c9e4d4';
+  const amber = 'background:#FDF1E3;color:#B5700E;border-color:#F0D8B3';
+  if(s === 'actief')      return `<span class="pill" style="${groen}">Actief account</span>`;
+  if(s === 'uitgenodigd') return `<span class="pill" style="${amber}">Uitgenodigd</span> <button class="knop-rand" data-invite="${l.id}">Opnieuw</button>`;
+  if(s === 'geen')        return l.email ? `<button class="knop-rand" data-invite="${l.id}">Uitnodigen</button>` : `<span class="status-nee">geen e-mail</span>`;
+  return `<span class="dim">…</span>`;
 }
 
 function renderLeden(){
@@ -147,7 +168,7 @@ function renderLeden(){
       <td><span class="nm">${esc(naam)}</span></td>
       <td><span class="em">${esc(l.email||'')}</span></td>
       <td><div class="kwals">${chips||'<span class="status-nee">—</span>'}</div></td>
-      <td>${l.actief===false?'<span class="status-nee">Inactief</span>':'<span class="pill" style="background:#E6F2EB;color:var(--groen);border-color:#c9e4d4">Actief</span>'}</td>
+      <td>${accountCel(l)}</td>
       <td><div class="acties">
         <button class="knop-rand" data-edit="${l.id}">Bewerken</button>
         <button class="knop-rand rood" data-del="${l.id}">Verwijderen</button>
@@ -155,6 +176,18 @@ function renderLeden(){
   }).join('');
   body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openForm(Number(b.dataset.edit)));
   body.querySelectorAll('[data-del]').forEach(b => b.onclick = () => verwijderLid(Number(b.dataset.del)));
+  body.querySelectorAll('[data-invite]').forEach(b => b.onclick = () => nodigUit(Number(b.dataset.invite)));
+}
+
+async function nodigUit(id){
+  const l = leden.find(x => x.id===id); if(!l) return;
+  if(!l.email){ melding('#leden-melding','Dit lid heeft geen e-mailadres. Vul dat eerst in via Bewerken.', 'fout'); return; }
+  if(!confirm('Uitnodiging per e-mail sturen naar '+l.email+'?')) return;
+  melding('#leden-melding','Uitnodiging versturen…');
+  const { data, error } = await supabase.functions.invoke('ploeg-beheer', { body:{ action:'invite', id } });
+  if(error || !data || !data.ok){ melding('#leden-melding', (data && data.error) || vertaalFout((error && error.message) || 'Versturen mislukt.'), 'fout'); return; }
+  melding('#leden-melding', data.herinnerd ? 'Al uitgenodigd — herinnering verstuurd.' : 'Uitnodiging verstuurd naar '+l.email+'.', 'ok');
+  laadAccountStatus();
 }
 
 $('#m-checks').innerHTML = KWALS.map(([k,lab]) =>
