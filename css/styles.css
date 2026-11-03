@@ -146,6 +146,9 @@ td .em{color:var(--slate);font-size:13px}
 #dash .balk{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
 #dash .balk i{display:block;height:100%;background:var(--ink);border-radius:3px}
 #dash .functie.tekort .balk i{background:var(--red-accessible)} #dash .functie.tekort .vl{color:var(--red-accessible)}
+#dash .functie .wie{margin-top:9px;font-size:12.5px;line-height:1.5;color:var(--ink)}
+#dash .functie .wie .sc{color:var(--dim);margin:0 5px}
+#dash .functie .wie.leeg{color:var(--dim);font-style:italic}
 #dash .overig{grid-column:1/-1;font-size:13px;color:var(--slate);border-top:1px solid var(--line);padding-top:16px}
 #dash .overig b{color:var(--ink)}
 #dash .kpi .label{font-size:13px;color:var(--slate)}
