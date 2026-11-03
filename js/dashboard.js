@@ -21,6 +21,7 @@ const fmtMin = m => { const s = Math.round(m*60); return Math.floor(s/60)+":"+St
 const fmtN   = n => Number(n).toLocaleString('nl-NL');
 const nlDat  = s => new Date(s).toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
 const nlDatTijd = s => new Date(s).toLocaleString('nl-NL',{day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'});
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const tip = $("#tip");
 function toonTip(e,t){ if(!tip)return; tip.textContent=t; tip.hidden=false; tip.style.left=Math.max(8,Math.min(e.clientX+12,innerWidth-tip.offsetWidth-8))+"px"; tip.style.top=(e.clientY-38)+"px"; }
@@ -46,9 +47,12 @@ function teken(){
   }
   const fl = B ? B.functies.filter(x=>x.nodig>0).map(x=>({nm:x.label,n:x.beschikbaar,nodig:x.nodig}))
               : Object.keys(D.norm.bezetting).map(k=>({nm:k,n:D.nu[k]||0,nodig:D.norm.bezetting[k]}));
+  const namenVan = x => (B && B.nu_namen && Array.isArray(B.nu_namen[x.nm])) ? B.nu_namen[x.nm] : null;
   let vol=true, f="";
   for(const x of fl){ const ok=x.n>=x.nodig; if(!ok) vol=false;
-    f += `<div class="functie ${ok?"":"tekort"}"><div class="nm">${x.nm}</div><div class="vl">${x.n} <span>/ ${x.nodig} nodig</span></div><div class="balk"><i style="width:${Math.min(100,x.n/x.nodig*100)}%"></i></div></div>`; }
+    const nn = namenVan(x);
+    const wie = nn==null ? "" : (nn.length ? `<div class="wie">${nn.map(esc).join("<span class='sc'>·</span>")}</div>` : `<div class="wie leeg">niemand beschikbaar</div>`);
+    f += `<div class="functie ${ok?"":"tekort"}"><div class="nm">${x.nm}</div><div class="vl">${x.n} <span>/ ${x.nodig} nodig</span></div><div class="balk"><i style="width:${Math.min(100,x.n/x.nodig*100)}%"></i></div>${wie}</div>`; }
   const overig = B ? B.functies.filter(x=>x.nodig===0).map(x=>`${x.label} <b>${x.beschikbaar}</b>`).join(" · ") : "";
   const nt = B && B.nu_tier;
   const stK = nt ? TIERKLEUR[nt.tier] : null;
@@ -126,6 +130,12 @@ function renderBeschikbaarheid(){
   const celC = (ct,pct,bg,sep) => ct==null
     ? `<td class="r${sep?' sep':''}"><span class="dim">–</span></td>`
     : `<td class="r${sep?' sep':''}"${bg?` style="background:${bg}"`:""}><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
+  // Eén Overig-oordeel per lid, leidend bepaald door de uitsplitsing naar moment en prio
+  // (som van beide prio-overig t.o.v. het gemiddelde). Dezelfde kleur kleurt zowel de
+  // totaal-Overig (tabel 1) als de Overig-cellen P1/P2 (tabel 2), zodat beide overzichten
+  // altijd hetzelfde verhaal vertellen.
+  const gemOverig = g ? (g.overig_p1||0)+(g.overig_p2||0) : null;
+  const bgOverig  = l => bgDev((l.overig_p1||0)+(l.overig_p2||0), gemOverig);
 
   const body = $("#besch-body");
   if(body){
@@ -133,7 +143,7 @@ function renderBeschikbaarheid(){
         <td><span class="nm">${l.naam}</span></td>
         <td class="r">${fmtN(l.uren_totaal)}<span class="eh">u</span></td>
         <td class="r kol-sort"><b>${fmtN(l.uren_odw)}<span class="eh">u</span></b><span class="pct">${l.pct_uren_odw}%</span></td>
-        ${cel(l.mee_totaal,l.pct_mee_totaal,true)}${cel(l.mee_p1,l.pct_mee_p1)}${cel(l.mee_p2,l.pct_mee_p2)}${cel(l.mee_odw,l.pct_mee_odw)}${celC(l.mee_overig,l.pct_mee_overig,bgDev(l.mee_overig,g&&g.mee_overig))}
+        ${cel(l.mee_totaal,l.pct_mee_totaal,true)}${cel(l.mee_p1,l.pct_mee_p1)}${cel(l.mee_p2,l.pct_mee_p2)}${cel(l.mee_odw,l.pct_mee_odw)}${celC(l.mee_overig,l.pct_mee_overig,bgOverig(l))}
       </tr>`).join("")
       + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r">${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span></td><td class="r kol-sort"><b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span></td><td class="r sep"></td><td class="r"></td><td class="r"></td><td class="r"></td><td class="r"></td></tr>`
       + (g?`<tr class="gem"><td>Gemiddelde p.p.</td><td class="r"></td><td class="r kol-sort"></td>${cel(dec(g.mee_totaal),g.pct_totaal,true)}${cel(dec(g.mee_p1),g.pct_p1)}${cel(dec(g.mee_p2),g.pct_p2)}${cel(dec(g.mee_odw),g.pct_odw)}${cel(dec(g.mee_overig),g.pct_overig)}</tr>`:"");
@@ -143,7 +153,7 @@ function renderBeschikbaarheid(){
   if(kb && B.leden[0] && B.leden[0].odw_p1!=null){
     kb.innerHTML = B.leden.map(l=>`<tr>
         <td><span class="nm">${l.naam}</span></td>
-        ${cel(l.odw_p1,l.pct_odw_p1)}${cel(l.odw_p2,l.pct_odw_p2)}${celC(l.overig_p1,l.pct_overig_p1,bgDev(l.overig_p1,g&&g.overig_p1),true)}${celC(l.overig_p2,l.pct_overig_p2,bgDev(l.overig_p2,g&&g.overig_p2))}
+        ${cel(l.odw_p1,l.pct_odw_p1)}${cel(l.odw_p2,l.pct_odw_p2)}${celC(l.overig_p1,l.pct_overig_p1,bgOverig(l),true)}${celC(l.overig_p2,l.pct_overig_p2,bgOverig(l))}
       </tr>`).join("")
       + (g?`<tr class="gem"><td>Gemiddelde p.p.</td>${cel(dec(g.odw_p1),g.pct_odw_p1)}${cel(dec(g.odw_p2),g.pct_odw_p2)}${cel(dec(g.overig_p1),g.pct_overig_p1,true)}${cel(dec(g.overig_p2),g.pct_overig_p2)}</tr>`:"");
   }
