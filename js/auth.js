@@ -87,7 +87,17 @@ async function naarApp(){
   $('#beheer-knop').hidden = (rol !== 'beheerder');
   toon('#app');
   toonTab('overzicht');
+  await laadBezetting();
   if(window.NBLDash) window.NBLDash.teken();
+}
+
+/* Live bezetting uit Supabase (geplande Edge Function). Valt terug op bezetting.js als er
+   nog geen rij is of de query faalt. */
+async function laadBezetting(){
+  try{
+    const { data, error } = await supabase.from('bezetting').select('data').eq('id', 1).maybeSingle();
+    if(!error && data && data.data) window.NBL_BEZETTING = data.data;
+  }catch(e){ /* fallback: window.NBL_BEZETTING uit bezetting.js blijft staan */ }
 }
 
 function startAuth(fout){ toon('#auth'); kaart('c-login'); if(fout) melding('#l-melding', fout, 'fout'); }
