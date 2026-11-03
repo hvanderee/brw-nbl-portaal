@@ -10,11 +10,13 @@
 html,body{margin:0}
 html,body{overflow-x:hidden}
 body{font-family:var(--font-body);background:var(--surface);color:var(--ink);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
-/* Responsive: flex-items mogen krimpen zodat brede tabellen binnen hun kaart scrollen
-   i.p.v. de hele pagina breder dan het scherm te duwen. */
+/* Responsive: op smalle schermen mag de inhoud nooit breder worden dan het scherm.
+   main begrenzen zodat brede tabellen binnen hun eigen kaart scrollen (en alle kolommen
+   bereikbaar blijven via swipen) i.p.v. de hele pagina breder te duwen of af te kappen. */
 #app,#app>main,.wrap,.view,.sectie,.sk{min-width:0}
 .tabelwrap{max-width:100%}
 .sk h2{min-width:0;overflow-wrap:anywhere}
+@media (max-width:820px){ #app>main{max-width:100%} }
 [hidden]{display:none!important}
 h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:.01em;line-height:1.1;margin:0}
 button{font-family:inherit}
