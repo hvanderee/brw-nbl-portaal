@@ -151,9 +151,12 @@ function accountCel(l){
   const s = accountStatus[l.id];
   const groen = 'background:#E6F2EB;color:var(--groen);border-color:#c9e4d4';
   const amber = 'background:#FDF1E3;color:#B5700E;border-color:#F0D8B3';
+  const bMail = `<button class="knop-rand" data-invite="${l.id}" data-via="mail" title="Verstuur uitnodigingsmail">Mail</button>`;
+  const bLink = `<button class="knop-rand" data-invite="${l.id}" data-via="link" title="Maak een deelbare toegangslink">Link</button>`;
   if(s === 'actief')      return `<span class="pill" style="${groen}">Actief account</span>`;
-  if(s === 'uitgenodigd') return `<span class="pill" style="${amber}">Uitgenodigd</span> <button class="knop-rand" data-invite="${l.id}">Opnieuw</button>`;
-  if(s === 'geen')        return l.email ? `<button class="knop-rand" data-invite="${l.id}">Uitnodigen</button>` : `<span class="status-nee">geen e-mail</span>`;
+  if(!l.email)            return `<span class="status-nee">geen e-mail</span>`;
+  if(s === 'uitgenodigd') return `<span class="pill" style="${amber}">Uitgenodigd</span> ${bLink}`;
+  if(s === 'geen')        return `${bMail} ${bLink}`;
   return `<span class="dim">…</span>`;
 }
 
@@ -176,17 +179,31 @@ function renderLeden(){
   }).join('');
   body.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openForm(Number(b.dataset.edit)));
   body.querySelectorAll('[data-del]').forEach(b => b.onclick = () => verwijderLid(Number(b.dataset.del)));
-  body.querySelectorAll('[data-invite]').forEach(b => b.onclick = () => nodigUit(Number(b.dataset.invite)));
+  body.querySelectorAll('[data-invite]').forEach(b => b.onclick = () => nodigUit(Number(b.dataset.invite), b.dataset.via));
 }
 
-async function nodigUit(id){
+async function nodigUit(id, via){
+  via = (via === 'mail') ? 'mail' : 'link';
   const l = leden.find(x => x.id===id); if(!l) return;
   if(!l.email){ melding('#leden-melding','Dit lid heeft geen e-mailadres. Vul dat eerst in via Bewerken.', 'fout'); return; }
-  if(!confirm('Uitnodiging per e-mail sturen naar '+l.email+'?')) return;
-  melding('#leden-melding','Uitnodiging versturen…');
-  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'invite', id } });
-  if(error || !data || !data.ok){ melding('#leden-melding', (data && data.error) || vertaalFout((error && error.message) || 'Versturen mislukt.'), 'fout'); return; }
-  melding('#leden-melding', data.herinnerd ? 'Al uitgenodigd — herinnering verstuurd.' : 'Uitnodiging verstuurd naar '+l.email+'.', 'ok');
+  if(via === 'mail'){
+    if(!confirm('Uitnodigingsmail sturen naar '+l.email+'?')) return;
+    melding('#leden-melding','Uitnodigingsmail versturen…');
+  } else {
+    if(!confirm('Een toegangslink maken voor '+l.naam+'?\nJe deelt die daarna zelf (bijv. via WhatsApp).')) return;
+    melding('#leden-melding','Link maken…');
+  }
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'invite', id, via } });
+  if(error || !data || !data.ok){ melding('#leden-melding', (data && data.error) || vertaalFout((error && error.message) || 'Mislukt.'), 'fout'); return; }
+  if(via === 'mail'){
+    melding('#leden-melding', 'Uitnodigingsmail verstuurd naar '+l.email+'.', 'ok');
+  } else if(data.link){
+    try{ await navigator.clipboard.writeText(data.link); }catch(e){}
+    melding('#leden-melding', 'Toegangslink voor '+l.naam+' gekopieerd. Deel hem privé (WhatsApp/mail); hij stelt daarmee zijn wachtwoord in.', 'ok');
+    try{ window.prompt('Toegangslink voor '+l.naam+' — kopieer en deel privé:', data.link); }catch(e){}
+  } else {
+    melding('#leden-melding', 'Uitnodiging klaargezet voor '+l.naam+'.', 'ok');
+  }
   laadAccountStatus();
 }
 
