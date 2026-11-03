@@ -283,17 +283,18 @@ const nlDatKort = s => new Date(s).toLocaleDateString("nl-NL",{day:"numeric",mon
 const kortRol = r => !r ? "–" : r.replace(/vrijwillig\s*/i,"").replace(/\s*\(.*?\)\s*/g," ").replace(/\s+/g," ").trim().replace(/^./,c=>c.toUpperCase());
 
 function renderMijn(rows){
-  rows = (rows||[]).filter(r=>r.incident).slice()
-    .sort((a,b)=> new Date(b.incident.begin_op||0) - new Date(a.incident.begin_op||0));
   const jaar = new Date().getFullYear();
-  const mee = rows.filter(r=>OPKOMST_MEE.has(r.opkomst));
-  const meeJaar = mee.filter(r=> new Date(r.incident.begin_op).getFullYear()===jaar);
-  const laatste = mee[0] || rows[0];
-  const rolTel = {}; mee.forEach(r=>{ if(r.rol) rolTel[r.rol]=(rolTel[r.rol]||0)+1; });
+  // Alleen het lopende jaar, nieuwste eerst.
+  rows = (rows||[]).filter(r=>r.incident && new Date(r.incident.begin_op).getFullYear()===jaar).slice()
+    .sort((a,b)=> new Date(b.incident.begin_op||0) - new Date(a.incident.begin_op||0));
+  const uitgerukt = rows.filter(r=> r.opkomst===3);
+  const opgekomen = rows.filter(r=> r.opkomst===3 || r.opkomst===4);
+  const laatste = uitgerukt[0] || opgekomen[0] || rows[0];
+  const rolTel = {}; uitgerukt.forEach(r=>{ if(r.rol) rolTel[r.rol]=(rolTel[r.rol]||0)+1; });
   const vaak = Object.entries(rolTel).sort((a,b)=>b[1]-a[1])[0];
   const kpis = [
-    ["Uitgerukt "+jaar, meeJaar.length, "uitrukken dit jaar"],
-    ["Totaal uitgerukt", mee.length, "sinds de start in VP"],
+    ["Uitgerukt "+jaar, uitgerukt.length, "met de TS mee"],
+    ["Opgekomen "+jaar, opgekomen.length, "uitgerukt of kazerne"],
     ["Laatste uitruk", laatste?nlDatKort(laatste.incident.begin_op):"–", laatste&&laatste.incident.city_name||""],
     ["Vaakste functie", vaak?kortRol(vaak[0]):"–", vaak?vaak[1]+"×":""],
   ];
@@ -301,16 +302,19 @@ function renderMijn(rows){
   const bron = $("#mijn-bron"); const body = $("#mijn-body"); if(!body) return;
   if(!rows.length){
     if(bron) bron.textContent = "";
-    body.innerHTML = `<tr><td colspan="6" style="color:var(--slate)">Nog geen uitrukken gekoppeld. Draai de VP-sync, of controleer of je account-mailadres aan je ploeglid (met VP-id) gekoppeld is.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" style="color:var(--slate)">Nog geen uitrukken in ${jaar} gekoppeld. Draai de VP-sync, of controleer of je account-mailadres aan je ploeglid (met VP-id) gekoppeld is.</td></tr>`;
     return;
   }
-  if(bron) bron.textContent = rows.length+" geregistreerd · "+mee.length+" uitgerukt";
-  body.innerHTML = rows.map(r=>{ const i=r.incident, dt=new Date(i.begin_op), isMee=OPKOMST_MEE.has(r.opkomst);
-    const mld = (i.object_functie && i.object_functie!=="Onbekend") ? i.object_functie : (i.classificatie || i.street_full || "Melding");
-    return `<tr class="${isMee?"":"nietmee"}">
-      <td>${nlDatKort(i.begin_op)}<br><span class="dim">${dt.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"})}</span></td>
+  if(bron) bron.textContent = rows.length+" uitrukken in "+jaar+" · "+uitgerukt.length+" uitgerukt";
+  body.innerHTML = rows.map(r=>{ const i=r.incident, dt=new Date(i.begin_op), isUit = r.opkomst===3;
+    const mld = (i.object_functie && i.object_functie!=="Onbekend") ? i.object_functie : (i.classificatie || "Melding");
+    const loc = `${esc(i.street_full||"–")}${i.city_name?`<span class="pct">${esc(i.city_name)}</span>`:""}`;
+    return `<tr class="${isUit?"":"nietmee"}">
+      <td>${nlDatKort(i.begin_op)}<span class="pct">${dt.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"})}</span></td>
       <td><span class="prio P${i.prioriteit||"?"}">P${i.prioriteit||"?"}</span></td>
-      <td>${esc(mld)}</td><td>${esc(i.city_name||"")}</td><td>${esc(kortRol(r.rol))}</td>
+      <td>${esc(mld)}</td>
+      <td>${loc}</td>
+      <td>${isUit ? esc(kortRol(r.rol)) : '<span class="dim">–</span>'}</td>
       <td class="r"><span class="opk opk${r.opkomst}">${OPKOMST_LABEL[r.opkomst]||("code "+r.opkomst)}</span></td>
     </tr>`; }).join("");
 }
