@@ -116,22 +116,62 @@
       <!-- ===== Beschikbaarheid ===== -->
       <div class="view" id="view-beschikbaarheid" hidden>
         <section class="sectie">
-          <div class="sk"><h2>Beschikbaarheid per lid</h2></div>
+          <div class="sk"><h2>Beschikbaarheid en uitrukdeelname</h2></div>
           <p id="besch-meta" class="uitleg"></p>
           <div class="tabelwrap">
             <table class="besch">
-              <thead><tr>
-                <th>Naam</th>
-                <th class="r">Uren<span>totaal</span></th>
-                <th class="r kol-sort">Beschikbaar<span>overdag werkdag</span></th>
-                <th class="r sep">Mee totaal<span>van 57 uitrukken</span></th>
-                <th class="r">Mee overdag<span>van 25</span></th>
-                <th class="r">Mee overig<span>van 32</span></th>
-              </tr></thead>
+              <thead>
+                <tr class="grp">
+                  <th rowspan="2">Naam</th>
+                  <th colspan="2">Beschikbaarheid</th>
+                  <th colspan="5" class="grp-mee">Uitrukken mee</th>
+                </tr>
+                <tr>
+                  <th class="r">Uren<span>totaal</span></th>
+                  <th class="r kol-sort">Overdag<span>werkdag</span></th>
+                  <th class="r sep">Totaal<span>van 57</span></th>
+                  <th class="r">Prio 1<span>van 29</span></th>
+                  <th class="r">Prio 2<span>van 28</span></th>
+                  <th class="r">Overdag<span>van 25</span></th>
+                  <th class="r">Overig<span>van 32</span></th>
+                </tr>
+              </thead>
               <tbody id="besch-body"></tbody>
             </table>
           </div>
-          <p class="uitleg" style="margin-top:12px">Gesorteerd op beschikbare uren overdag op werkdagen (ma–vr, 07:00–18:00). Overig = avond, nacht en weekend. % = aandeel van alle uitrukken in die categorie waarbij iemand mee is geweest. Beschikbaarheid volgens Pre-Com ('niet afgemeld' telt als beschikbaar).</p>
+          <p class="uitleg" style="margin-top:12px">Gesorteerd op beschikbare uren overdag op werkdagen (ma–vr 07:00–18:00). Prio 1 + Prio 2 = totaal; overdag werkdag + overig = totaal. % = aandeel van alle uitrukken in die categorie waarbij iemand mee was. Beschikbaarheid volgens Pre-Com ('niet afgemeld' telt als beschikbaar).</p>
+        </section>
+
+        <section class="sectie">
+          <div class="sk"><h2>Uitsplitsing naar moment en prio</h2></div>
+          <div class="tabelwrap">
+            <table class="besch">
+              <thead>
+                <tr class="grp">
+                  <th rowspan="2">Naam</th>
+                  <th colspan="2">Overdag werkdag <span class="van">(van 25)</span></th>
+                  <th colspan="2" class="grp-mee">Overig <span class="van">(van 32)</span></th>
+                </tr>
+                <tr>
+                  <th class="r">Prio 1<span>van 17</span></th>
+                  <th class="r">Prio 2<span>van 8</span></th>
+                  <th class="r sep">Prio 1<span>van 12</span></th>
+                  <th class="r">Prio 2<span>van 20</span></th>
+                </tr>
+              </thead>
+              <tbody id="besch-kruis-body"></tbody>
+            </table>
+          </div>
+          <details class="leeswijzer">
+            <summary>Hoe lees je dit overzicht?</summary>
+            <ul>
+              <li><b>Gemiddelde.</b> De onderste regel is het gemiddeld aantal uitrukken per persoon, per kolom. Vergelijk je eigen aantal in dezelfde kolom.</li>
+              <li><b>Percentage.</b> Het aandeel van de uitrukken in die categorie waarbij iemand mee was. 32% ≈ 1 op 3, 50% = 1 op 2, 25% = 1 op 4.</li>
+              <li><b>Overdag werkdag en overig.</b> Overdag werkdag = ma–vr 07:00–18:00. Overig = avond, nacht en weekend.</li>
+              <li><b>Opbouw.</b> Prio 1 + Prio 2 = totaal. Overdag werkdag + overig = totaal. In deze tabel is elk uitgesplitst naar prio 1 en prio 2.</li>
+              <li><b>Uren.</b> Beschikbare uren = de uren waarin iemand in Pre-Com niet afgemeld stond; uren overdag werkdag is het deel daarvan op ma–vr 07:00–18:00.</li>
+            </ul>
+          </details>
         </section>
       </div>
 

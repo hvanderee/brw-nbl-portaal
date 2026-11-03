@@ -104,18 +104,33 @@ function teken(){
 
 function renderBeschikbaarheid(){
   const B = window.NBL_BESCHIKBAARHEID; if(!B) return;
-  const m = B.meta, mt = $("#besch-meta");
-  if(mt) mt.textContent = `Periode ${nlDat(m.periode_start)} t/m ${nlDat(m.periode_eind)} · ${m.n_uitrukken} uitrukken, waarvan ${m.n_odw} overdag op een werkdag (${m.pct_odw}%) · bijgewerkt ${nlDatTijd(m.bijgewerkt)}`;
-  const body = $("#besch-body"); if(!body) return;
-  body.innerHTML = B.leden.map(l=>`<tr>
-      <td><span class="nm">${l.naam}</span></td>
-      <td class="r">${fmtN(l.uren_totaal)}<span class="eh">u</span></td>
-      <td class="r kol-sort"><b>${fmtN(l.uren_odw)}<span class="eh">u</span></b><span class="pct">${l.pct_uren_odw}%</span></td>
-      <td class="r sep"><b>${l.mee_totaal}<span class="eh">×</span></b><span class="pct">${l.pct_mee_totaal}%</span></td>
-      <td class="r"><b>${l.mee_odw}<span class="eh">×</span></b><span class="pct">${l.pct_mee_odw}%</span></td>
-      <td class="r"><b>${l.mee_overig}<span class="eh">×</span></b><span class="pct">${l.pct_mee_overig}%</span></td>
-    </tr>`).join("")
-    + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r">${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span></td><td class="r kol-sort"><b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span></td><td class="r sep"></td><td class="r"></td><td class="r"></td></tr>`;
+  const m = B.meta, g = m.gem, mt = $("#besch-meta");
+  if(mt) mt.textContent = `Periode ${nlDat(m.periode_start)} t/m ${nlDat(m.periode_eind)} · ${m.n_uitrukken} uitrukken (${m.n_prio1}× P1, ${m.n_prio2}× P2), waarvan ${m.n_odw} overdag op een werkdag (${m.pct_odw}%) · bijgewerkt ${nlDatTijd(m.bijgewerkt)}`;
+  const dec = n => Number(n).toLocaleString('nl-NL');
+  const cel = (ct,pct,sep) => ct==null
+    ? `<td class="r${sep?' sep':''}"><span class="dim">–</span></td>`
+    : `<td class="r${sep?' sep':''}"><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
+
+  const body = $("#besch-body");
+  if(body){
+    body.innerHTML = B.leden.map(l=>`<tr>
+        <td><span class="nm">${l.naam}</span></td>
+        <td class="r">${fmtN(l.uren_totaal)}<span class="eh">u</span></td>
+        <td class="r kol-sort"><b>${fmtN(l.uren_odw)}<span class="eh">u</span></b><span class="pct">${l.pct_uren_odw}%</span></td>
+        ${cel(l.mee_totaal,l.pct_mee_totaal,true)}${cel(l.mee_p1,l.pct_mee_p1)}${cel(l.mee_p2,l.pct_mee_p2)}${cel(l.mee_odw,l.pct_mee_odw)}${cel(l.mee_overig,l.pct_mee_overig)}
+      </tr>`).join("")
+      + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r">${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span></td><td class="r kol-sort"><b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span></td><td class="r sep"></td><td class="r"></td><td class="r"></td><td class="r"></td><td class="r"></td></tr>`
+      + (g?`<tr class="gem"><td>Gemiddelde p.p.</td><td class="r"></td><td class="r kol-sort"></td>${cel(dec(g.mee_totaal),g.pct_totaal,true)}${cel(dec(g.mee_p1),g.pct_p1)}${cel(dec(g.mee_p2),g.pct_p2)}${cel(dec(g.mee_odw),g.pct_odw)}${cel(dec(g.mee_overig),g.pct_overig)}</tr>`:"");
+  }
+
+  const kb = $("#besch-kruis-body");
+  if(kb && B.leden[0] && B.leden[0].odw_p1!=null){
+    kb.innerHTML = B.leden.map(l=>`<tr>
+        <td><span class="nm">${l.naam}</span></td>
+        ${cel(l.odw_p1,l.pct_odw_p1)}${cel(l.odw_p2,l.pct_odw_p2)}${cel(l.overig_p1,l.pct_overig_p1,true)}${cel(l.overig_p2,l.pct_overig_p2)}
+      </tr>`).join("")
+      + (g?`<tr class="gem"><td>Gemiddelde p.p.</td>${cel(dec(g.odw_p1),g.pct_odw_p1)}${cel(dec(g.odw_p2),g.pct_odw_p2)}${cel(dec(g.overig_p1),g.pct_overig_p1,true)}${cel(dec(g.overig_p2),g.pct_overig_p2)}</tr>`:"");
+  }
 }
 
 function renderSterkte(){

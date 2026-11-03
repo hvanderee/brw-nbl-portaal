@@ -229,10 +229,26 @@ td .em{color:var(--slate);font-size:13px}
 #dash table.besch .sep{border-left:1px solid var(--line)}
 #dash table.besch .kol-sort{background:rgba(207,49,27,.05)}
 #dash table.besch thead .kol-sort{background:rgba(207,49,27,.08)}
-#dash table.besch tbody tr:not(.totaal):hover td{background:var(--surface)}
-#dash table.besch tbody tr:not(.totaal):hover td.kol-sort{background:rgba(207,49,27,.09)}
+#dash table.besch tbody tr:not(.totaal):not(.gem):hover td{background:var(--surface)}
+#dash table.besch tbody tr:not(.totaal):not(.gem):hover td.kol-sort{background:rgba(207,49,27,.09)}
 #dash table.besch tr.totaal td{border-top:2px solid var(--graphite);border-bottom:0;padding-top:14px}
 #dash table.besch tr.totaal td b{font-family:var(--font-display);font-size:16px}
+/* gegroepeerde koppen (2 kopregels) */
+#dash table.besch thead tr.grp th{text-align:center;border-bottom:1px solid var(--line);padding-bottom:7px;font-size:12px;color:var(--slate);text-transform:uppercase;letter-spacing:.03em}
+#dash table.besch thead tr.grp th[rowspan]{text-align:left;vertical-align:bottom;border-bottom:0}
+#dash table.besch thead tr.grp .grp-mee{border-left:1px solid var(--line)}
+#dash table.besch .van{font-weight:400;color:var(--dim);font-size:11px;text-transform:none;letter-spacing:0}
+/* gemiddelde-per-persoon rij */
+#dash table.besch tr.gem td{border-top:1px solid var(--line);color:var(--slate);padding-top:12px}
+#dash table.besch tr.gem td:first-child{font-weight:600}
+#dash table.besch tr.gem td b{font-weight:600}
+/* leeswijzer */
+.leeswijzer{margin-top:16px;border:1px solid var(--line);border-radius:10px;background:var(--white);font-size:13px}
+.leeswijzer summary{cursor:pointer;padding:12px 16px;font-weight:600;color:var(--ink);list-style-position:inside}
+.leeswijzer[open] summary{border-bottom:1px solid var(--line)}
+.leeswijzer ul{margin:0;padding:12px 16px 14px 34px;color:var(--slate);line-height:1.55}
+.leeswijzer li{margin-bottom:6px}
+.leeswijzer li b{color:var(--ink)}
 
 /* bezettingsgraad (Paraatheid) — 5 niveaus */
 #dash #sterkte{display:flex;flex-direction:column;gap:13px}
