@@ -110,18 +110,22 @@ function renderBeschikbaarheid(){
   const cel = (ct,pct,sep) => ct==null
     ? `<td class="r${sep?' sep':''}"><span class="dim">–</span></td>`
     : `<td class="r${sep?' sep':''}"><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
-  // Kleur de kolom Overig naar afwijking t.o.v. het gemiddelde: rood = veel mee, oranje = weinig.
+  // Kleur Overig-kolommen naar afwijking t.o.v. het gemiddelde.
+  // Warm (oranje→rood) = gaat veel mee (mag minder); koel (lichtblauw→blauw) = gaat weinig mee (mag meer).
   // Neutrale zone rond het gemiddelde; tint blijft licht zodat de tekst leesbaar is. Niet voor overdag.
-  const gemOv = g ? g.mee_overig : null, bandOv = gemOv!=null ? Math.max(2, gemOv*0.25) : null;
-  const bgOverig = ct => {
-    if(gemOv==null || ct==null) return "";
-    const d = ct - gemOv; if(Math.abs(d) <= bandOv) return "";
-    const a = Math.min(0.34, 0.12 + (Math.abs(d)-bandOv)/gemOv*0.45).toFixed(2);
-    return d>0 ? `rgba(207,49,27,${a})` : `rgba(232,130,14,${a})`;
+  const _lerp = (a,b,t) => a.map((x,i)=>Math.round(x+(b[i]-x)*t));
+  const bgDev = (ct, gem) => {
+    if(gem==null || ct==null) return "";
+    const band = Math.max(1.5, gem*0.25), d = ct - gem, ad = Math.abs(d);
+    if(ad <= band) return "";
+    const t = Math.min(1, (ad-band)/Math.max(gem*0.7, 2));
+    const a = (0.15 + t*0.26).toFixed(2);
+    const c = d>0 ? _lerp([232,130,14],[207,49,27],t) : _lerp([125,178,232],[37,99,235],t);
+    return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
   };
-  const celC = (ct,pct,bg) => ct==null
-    ? `<td class="r"><span class="dim">–</span></td>`
-    : `<td class="r"${bg?` style="background:${bg}"`:""}><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
+  const celC = (ct,pct,bg,sep) => ct==null
+    ? `<td class="r${sep?' sep':''}"><span class="dim">–</span></td>`
+    : `<td class="r${sep?' sep':''}"${bg?` style="background:${bg}"`:""}><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
 
   const body = $("#besch-body");
   if(body){
@@ -129,7 +133,7 @@ function renderBeschikbaarheid(){
         <td><span class="nm">${l.naam}</span></td>
         <td class="r">${fmtN(l.uren_totaal)}<span class="eh">u</span></td>
         <td class="r kol-sort"><b>${fmtN(l.uren_odw)}<span class="eh">u</span></b><span class="pct">${l.pct_uren_odw}%</span></td>
-        ${cel(l.mee_totaal,l.pct_mee_totaal,true)}${cel(l.mee_p1,l.pct_mee_p1)}${cel(l.mee_p2,l.pct_mee_p2)}${cel(l.mee_odw,l.pct_mee_odw)}${celC(l.mee_overig,l.pct_mee_overig,bgOverig(l.mee_overig))}
+        ${cel(l.mee_totaal,l.pct_mee_totaal,true)}${cel(l.mee_p1,l.pct_mee_p1)}${cel(l.mee_p2,l.pct_mee_p2)}${cel(l.mee_odw,l.pct_mee_odw)}${celC(l.mee_overig,l.pct_mee_overig,bgDev(l.mee_overig,g&&g.mee_overig))}
       </tr>`).join("")
       + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r">${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span></td><td class="r kol-sort"><b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span></td><td class="r sep"></td><td class="r"></td><td class="r"></td><td class="r"></td><td class="r"></td></tr>`
       + (g?`<tr class="gem"><td>Gemiddelde p.p.</td><td class="r"></td><td class="r kol-sort"></td>${cel(dec(g.mee_totaal),g.pct_totaal,true)}${cel(dec(g.mee_p1),g.pct_p1)}${cel(dec(g.mee_p2),g.pct_p2)}${cel(dec(g.mee_odw),g.pct_odw)}${cel(dec(g.mee_overig),g.pct_overig)}</tr>`:"");
@@ -139,7 +143,7 @@ function renderBeschikbaarheid(){
   if(kb && B.leden[0] && B.leden[0].odw_p1!=null){
     kb.innerHTML = B.leden.map(l=>`<tr>
         <td><span class="nm">${l.naam}</span></td>
-        ${cel(l.odw_p1,l.pct_odw_p1)}${cel(l.odw_p2,l.pct_odw_p2)}${cel(l.overig_p1,l.pct_overig_p1,true)}${cel(l.overig_p2,l.pct_overig_p2)}
+        ${cel(l.odw_p1,l.pct_odw_p1)}${cel(l.odw_p2,l.pct_odw_p2)}${celC(l.overig_p1,l.pct_overig_p1,bgDev(l.overig_p1,g&&g.overig_p1),true)}${celC(l.overig_p2,l.pct_overig_p2,bgDev(l.overig_p2,g&&g.overig_p2))}
       </tr>`).join("")
       + (g?`<tr class="gem"><td>Gemiddelde p.p.</td>${cel(dec(g.odw_p1),g.pct_odw_p1)}${cel(dec(g.odw_p2),g.pct_odw_p2)}${cel(dec(g.overig_p1),g.pct_overig_p1,true)}${cel(dec(g.overig_p2),g.pct_overig_p2)}</tr>`:"");
   }
