@@ -214,8 +214,8 @@ td .em{color:var(--slate);font-size:13px}
 .tabknop:hover{color:var(--ink)}
 .tabknop[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--red)}
 
-/* ruimte onder tabbalk/header (.wrap nulde de main-padding) */
-#dash,#view-beheer{padding-top:28px}
+/* ruimte boven/onder de inhoud (.wrap nulde de main-padding) */
+#dash,#view-beheer{padding-top:28px;padding-bottom:48px}
 
 /* beschikbaarheidstabel */
 #besch-meta{font-size:13px;color:var(--slate);margin-top:-6px;margin-bottom:16px}
@@ -240,7 +240,7 @@ td .em{color:var(--slate);font-size:13px}
 
 @media (max-width:600px){
   .tabknop{padding:12px 12px;font-size:14px}
-  #dash,#view-beheer{padding-top:20px}
+  #dash,#view-beheer{padding-top:20px;padding-bottom:36px}
 }
 
 /* footer-merk: ploeglogo + copyright */
