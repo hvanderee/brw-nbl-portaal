@@ -287,18 +287,43 @@ const kortRol = r => !r ? "–" : r.replace(/vrijwillig\s*/i,"").replace(/\s*\(.
 function renderMijn(rows, corr){
   const jaar = new Date().getFullYear();
   corr = corr || { toevoegen:[], verwijderen:[] };
-  // Handmatige correcties uit de Verschillen-verklaring:
-  //  - verwijderen: onterechte VP-regels (bv. OBL/buurpost-inzet) eruit filteren op gebeurtenis_id.
-  //  - toevoegen: uitrukken die niet in VP staan maar wel meetellen, als synthetische regel erbij.
-  const weg = new Set((corr.verwijderen||[]).map(v=>String(v.gebeurtenis_id)));
-  rows = (rows||[]).filter(r=> !(r.incident && weg.has(String(r.incident.gebeurtenis_id))));
+  // Handmatige correcties (Excel-leidend):
+  //  - verwijderen: VP-regels die niet in de NBL-Excel horen (OBL/buurpost) of een afwijkende status
+  //    hebben. Zonder eenheid_id = het hele incident; mét eenheid_id = alleen die ene eenheid-regel.
+  //  - toevoegen: Excel-uitrukken die in VP ontbreken, als synthetische regel erbij.
+  const wegGid = new Set(), wegKey = new Set();
+  for(const v of (corr.verwijderen||[])){
+    if(v.eenheid_id!=null) wegKey.add(String(v.gebeurtenis_id)+'|'+String(v.eenheid_id));
+    else wegGid.add(String(v.gebeurtenis_id));
+  }
+  rows = (rows||[]).filter(r=>{
+    if(!r.incident) return true;
+    const gid = String(r.incident.gebeurtenis_id);
+    if(wegGid.has(gid)) return false;
+    if(r.eenheid_id!=null && wegKey.has(gid+"|"+String(r.eenheid_id))) return false;
+    return true;
+  });
   const extra = (corr.toevoegen||[]).map(t=>({
-    opkomst:3, rol:t.rol, _handmatig:true, _geentijd:(t.tijd_bekend===false),
+    opkomst:(t.opkomst!=null?t.opkomst:3), rol:t.rol, _handmatig:true, _geentijd:(t.tijd_bekend===false),
     incident:{ gebeurtenis_id:null, begin_op:t.begin_op,
       prioriteit:(t.prioriteit!=null?t.prioriteit:null),
       city_name:t.plaats, street_full:t.straat, object_functie:t.melding, classificatie:null }
   }));
   rows = rows.concat(extra);
+  // Dedupliceer alleen ÉCHTE dubbele VP-regels: zelfde incident én zelfde eenheid (voertuig).
+  // Een incident dat met twee eenheden uitrukt (bv. 5231 én 5221) geeft twee opkomstregels met
+  // verschillende eenheid_id — dat zijn twee uitrukken en blijven dus beide staan. Alleen een
+  // exacte herhaling (zelfde incident+eenheid) valt weg, met de hoogste code (uitgerukt>kazerne>niet).
+  const RANG = {3:3, 4:2, 1:1};
+  const perKey = new Map(); const losse = [];
+  for(const r of rows){
+    const gid = r.incident && r.incident.gebeurtenis_id;
+    if(gid==null || r.eenheid_id==null){ losse.push(r); continue; }  // handmatig of geen eenheid: niet dedupliceren
+    const key = gid + "|" + r.eenheid_id;
+    const best = perKey.get(key);
+    if(!best || (RANG[r.opkomst]||0) > (RANG[best.opkomst]||0)) perKey.set(key, r);
+  }
+  rows = [...perKey.values(), ...losse];
   // Alleen het lopende jaar, nieuwste eerst.
   rows = rows.filter(r=>r.incident && new Date(r.incident.begin_op).getFullYear()===jaar).slice()
     .sort((a,b)=> new Date(b.incident.begin_op||0) - new Date(a.incident.begin_op||0));

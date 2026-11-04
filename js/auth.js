@@ -14,7 +14,10 @@ let leden = [];
 
 const hash = new URLSearchParams(location.hash.slice(1));
 const flow = hash.get('type');
-let herstelModus = (flow === 'recovery' || flow === 'invite');
+// Korte, pre-fetch-bestendige uitnodigingslink: ?u=<code>. De code wordt pas bij de knopdruk
+// "Wachtwoord instellen" ingewisseld (claim), dus een WhatsApp-preview verbruikt 'm niet.
+const inviteCode = new URLSearchParams(location.search).get('u');
+let herstelModus = (flow === 'recovery' || flow === 'invite') || !!inviteCode;
 
 /* ============ TABBLADEN ============ */
 const TABS = ['overzicht','beschikbaarheid','paraatheid','uitrukken','mijn'];
@@ -78,6 +81,19 @@ $('#f-nieuw').addEventListener('submit', async e => {
   e.preventDefault();
   if($('#n-pw').value !== $('#n-pw2').value){ melding('#n-melding','De wachtwoorden zijn niet gelijk.', 'fout'); return; }
   $('#n-knop').disabled = true; melding('#n-melding','Opslaan…');
+  // Bij een korte uitnodigingslink (?u=code): verzilver nu pas het token. We halen het token_hash
+  // op via de beheer-functie (publieke 'claim') en loggen ermee in; pas deze knopdruk verbruikt het.
+  if(inviteCode){
+    try{
+      const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'claim', code: inviteCode } });
+      if(error || !data || !data.ok || !data.token_hash){
+        melding('#n-melding', (data && data.error) || 'Deze link is ongeldig of al gebruikt. Vraag de beheerder om een nieuwe.', 'fout');
+        $('#n-knop').disabled = false; return;
+      }
+      const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: data.type });
+      if(vErr){ melding('#n-melding', vertaalFout(vErr.message), 'fout'); $('#n-knop').disabled = false; return; }
+    }catch(err){ melding('#n-melding','Er ging iets mis bij het openen van de link. Probeer het opnieuw.', 'fout'); $('#n-knop').disabled = false; return; }
+  }
   const { error } = await supabase.auth.updateUser({ password: $('#n-pw').value });
   $('#n-knop').disabled = false;
   if(error){ melding('#n-melding', vertaalFout(error.message), 'fout'); }
@@ -292,7 +308,12 @@ async function verwijderLid(id){
 }
 
 /* ============ OPSTART ============ */
-if(herstelModus){ toon('#auth'); kaart('c-nieuw'); }
+if(herstelModus){
+  toon('#auth'); kaart('c-nieuw');
+  if(inviteCode){ const h=$('#c-nieuw h2'), p=$('#c-nieuw .intro');
+    if(h) h.textContent='Welkom bij het ploegportaal';
+    if(p) p.textContent='Kies een wachtwoord om je account te activeren. Minimaal 8 tekens.'; }
+}
 else {
   toon('#auth'); kaart('c-login');
   supabase.auth.getSession().then(({ data:{ session } }) => { if(session) naarApp(); }).catch(() => {});
