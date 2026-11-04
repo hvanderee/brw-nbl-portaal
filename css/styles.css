@@ -194,11 +194,26 @@ td .em{color:var(--slate);font-size:13px}
 #dash #mijn-body tr.hmrow td{background:#FCF4DC}
 #dash #mijn-body tr.hmrow:hover td{background:#F8EBC4}
 .hm-leg{display:inline-block;width:12px;height:12px;border-radius:3px;background:#FCF4DC;border:1px solid #e3d093;vertical-align:-1px;margin-right:5px}
-/* Beheertabel handmatige uitrukken: vul de breedte en laat melding/locatie afbreken zodat de
-   actieknoppen op een normaal scherm zichtbaar blijven zonder horizontaal scrollen. */
-#corr-blok table.besch{width:100%}
-#corr-blok table.besch td:nth-child(4),#corr-blok table.besch td:nth-child(5){white-space:normal;min-width:130px}
+/* Beheertabellen: vul de breedte en laat melding/locatie afbreken zodat de actieknoppen op een
+   normaal scherm zichtbaar blijven zonder horizontaal scrollen. */
+#uitruk-blok table.besch{width:100%}
+#uitruk-blok table.besch td:nth-child(3),#uitruk-blok table.besch td:nth-child(4),#uitruk-blok table.besch td:nth-child(5){white-space:normal;min-width:110px}
+#verb-blok table.besch{width:100%}
 #view-beheer .tabelwrap{overflow-x:auto}
+/* Deelnemer-grid in de uitruk-modal */
+.modal-breed{max-width:640px}
+.deel-kop{display:grid;grid-template-columns:1fr 168px 150px;gap:10px;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--slate);padding:10px 4px 6px}
+.deel-grid{max-height:42vh;overflow-y:auto;border:1px solid var(--line);border-radius:10px;padding:4px 6px}
+.deel-rij{display:grid;grid-template-columns:1fr 168px 150px;gap:10px;align-items:center;padding:5px 2px;border-bottom:1px solid var(--line)}
+.deel-rij:last-child{border-bottom:0}
+.deel-naam{font-size:14px;color:var(--ink)}
+.deel-opk,.deel-rol{height:38px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);padding:0 10px;font-size:14px;color:var(--ink);cursor:pointer}
+.deel-rol:disabled{opacity:.45;cursor:default}
+@media(max-width:600px){
+  .deel-kop{display:none}
+  .deel-rij{grid-template-columns:1fr;gap:6px;padding:10px 2px}
+  .deel-naam{font-weight:600}
+}
 #dash .tabelwrap{overflow-x:auto}
 #dash .typen{display:grid;gap:16px}
 #dash .type .rij{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
