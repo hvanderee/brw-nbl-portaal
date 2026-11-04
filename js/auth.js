@@ -129,6 +129,7 @@ async function naarApp(){
   toon('#app');
   toonTab('overzicht');
   await laadBezetting();
+  await laadBeschikbaarheidUren();
   if(window.NBLDash) window.NBLDash.teken();
   startBezettingRefresh();
 }
@@ -140,6 +141,28 @@ async function laadBezetting(){
     const { data, error } = await supabase.from('bezetting').select('data').eq('id', 1).maybeSingle();
     if(!error && data && data.data) window.NBL_BEZETTING = data.data;
   }catch(e){ /* fallback: window.NBL_BEZETTING uit bezetting.js blijft staan */ }
+}
+
+/* Beschikbare uren (per lid) komen live uit Pre-Com via de dagelijkse Edge Function 'beschikbaarheid'.
+   We leggen ze over de A3-data (beschikbaarheid.js) heen: alleen de uren-kolommen worden overschreven,
+   de uitrukken-kolommen blijven uit de Excel. Lukt het niet, dan blijven de A3-uren staan. */
+async function laadBeschikbaarheidUren(){
+  try{
+    const { data } = await supabase.from('beschikbaarheid_uren').select('data').eq('id', 1).maybeSingle();
+    const u = data && data.data; const B = window.NBL_BESCHIKBAARHEID;
+    if(!u || !B) return;
+    for(const l of (B.leden || [])){
+      const lu = u.leden && u.leden[l.naam];
+      if(lu){ l.uren_totaal = lu.uren_totaal; l.uren_odw = lu.uren_odw; l.pct_uren_odw = lu.pct_uren_odw; }
+    }
+    if(B.meta){
+      B.meta.ploeg_uren_totaal = u.ploeg_uren_totaal;
+      B.meta.ploeg_uren_odw    = u.ploeg_uren_odw;
+      B.meta.ploeg_pct_odw     = u.ploeg_pct_odw;
+      B.meta.uren_bijgewerkt   = u.bijgewerkt;
+      if(u.periode_eind) B.meta.periode_eind = u.periode_eind;
+    }
+  }catch(e){ /* A3-uren blijven staan */ }
 }
 
 /* Status nu actueel houden: de Edge Function werkt de bezetting-tabel elke 5 min bij (pg_cron),

@@ -111,7 +111,7 @@ function teken(){
 function renderBeschikbaarheid(){
   const B = window.NBL_BESCHIKBAARHEID; if(!B) return;
   const m = B.meta, g = m.gem, mt = $("#besch-meta");
-  if(mt) mt.textContent = `Periode ${nlDat(m.periode_start)} t/m ${nlDat(m.periode_eind)} · ${m.n_uitrukken} uitrukken (${m.n_prio1}× P1, ${m.n_prio2}× P2), waarvan ${m.n_odw} overdag op een werkdag (${m.pct_odw}%) · bijgewerkt ${nlDatTijd(m.bijgewerkt)}`;
+  if(mt) mt.textContent = `Periode ${nlDat(m.periode_start)} t/m ${nlDat(m.periode_eind)} · ${m.n_uitrukken} uitrukken (${m.n_prio1}× P1, ${m.n_prio2}× P2), waarvan ${m.n_odw} overdag op een werkdag (${m.pct_odw}%) · beschikbare uren rechtstreeks uit Pre-Com, 1× per dag bijgewerkt${m.uren_bijgewerkt?` (${nlDatTijd(m.uren_bijgewerkt)})`:""} · uitrukken uit de opkomstdatabase`;
   const dec = n => Number(n).toLocaleString('nl-NL');
   const cel = (ct,pct,sep) => ct==null
     ? `<td class="r${sep?' sep':''}"><span class="dim">–</span></td>`
