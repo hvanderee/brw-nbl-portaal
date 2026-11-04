@@ -239,7 +239,7 @@
           </div>
           <div style="margin-top:20px">
             <div class="kaart"><h3>Recente uitrukken</h3><p class="uitleg">De laatste uitrukken, met uitruktijd en bezetting op de TS. Alleen bij P1 is boven de streefwaarde (4:00) rood gemarkeerd — P2 valt buiten die ambitie.</p>
-              <div class="tabelwrap"><table><thead><tr><th>Datum</th><th>Prio</th><th>Melding</th><th class="r">Uitruktijd</th><th class="r">Bezetting</th></tr></thead><tbody id="recent"></tbody></table></div></div>
+              <div class="tabelwrap"><table class="besch"><thead><tr><th>Datum</th><th>Prio</th><th>Melding</th><th class="r">Uitruktijd</th><th class="r">Bezetting</th></tr></thead><tbody id="recent"></tbody></table></div></div>
           </div>
         </section>
       </div>
@@ -276,6 +276,25 @@
           <table>
             <thead><tr><th>Naam</th><th>E-mailadres</th><th>Kwalificaties</th><th>Account</th><th></th></tr></thead>
             <tbody id="leden-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="sectie" id="corr-blok">
+        <div class="sk">
+          <h3>Handmatige uitrukken</h3>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <select id="corr-filter" class="corr-select" aria-label="Filter op ploeglid"><option value="">Alle leden</option></select>
+            <span class="telt" id="corr-telt"></span>
+            <button class="knop-klein" id="nieuw-corr">+ Uitruk toevoegen</button>
+          </div>
+        </div>
+        <p class="uitleg">Uitrukken die in Veiligheidspaspoort ontbreken, hier per ploeglid toevoegen — ze verschijnen geel gearceerd in “Mijn uitrukken”. Met “VP-regel verbergen” haal je juist een onterechte VP-regel (OBL/buurpost of verkeerde status) weg.</p>
+        <div class="melding" id="corr-melding" role="status" aria-live="polite"></div>
+        <div class="tabelwrap">
+          <table class="besch">
+            <thead><tr><th>Ploeglid</th><th>Datum</th><th>Prio</th><th>Melding</th><th>Locatie</th><th>Opkomst</th><th></th></tr></thead>
+            <tbody id="corr-body"></tbody>
           </table>
         </div>
       </section>
@@ -322,12 +341,76 @@
   </div>
 </div>
 
+<!-- Modal: handmatige uitruk toevoegen/bewerken -->
+<div class="overlay" id="overlay-corr" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cm-titel">
+    <h3 id="cm-titel">Uitruk toevoegen</h3>
+    <p class="sub">Een uitruk die in Veiligheidspaspoort ontbreekt, of een VP-regel die eruit moet.</p>
+    <form id="f-corr">
+      <input type="hidden" id="cm-id">
+      <div class="veld2">
+        <div><label for="cm-lid">Ploeglid</label><select id="cm-lid" required></select></div>
+        <div><label for="cm-soort">Type</label><select id="cm-soort">
+          <option value="toevoegen">Uitruk toevoegen</option>
+          <option value="verwijderen">VP-regel verbergen</option>
+        </select></div>
+      </div>
+
+      <div id="cm-toe">
+        <div class="veld2">
+          <div><label for="cm-datum">Datum</label><input id="cm-datum" type="date"></div>
+          <div><label for="cm-tijd">Tijd</label><input id="cm-tijd" type="time">
+            <label class="check" style="margin-top:8px"><input type="checkbox" id="cm-geentijd"> Tijd onbekend</label></div>
+        </div>
+        <div class="veld2">
+          <div><label for="cm-opkomst">Opkomst</label><select id="cm-opkomst">
+            <option value="3">Uitgerukt (met de TS mee)</option>
+            <option value="4">Kazerne (wel opgekomen)</option>
+            <option value="1">Niet opgekomen</option>
+          </select></div>
+          <div><label for="cm-prio">Prioriteit</label><select id="cm-prio">
+            <option value="">—</option><option value="1">P1</option><option value="2">P2</option>
+          </select></div>
+        </div>
+        <div class="veld2">
+          <div><label for="cm-melding">Melding</label><input id="cm-melding" type="text" placeholder="bijv. Gebouwbrand"></div>
+          <div><label for="cm-rol">Functie (bij uitgerukt)</label><select id="cm-rol">
+            <option value="">—</option>
+            <option value="Bevelvoerder">Bevelvoerder</option>
+            <option value="Chauffeur TS">Chauffeur TS</option>
+            <option value="Chauffeur VEB">Chauffeur VEB</option>
+            <option value="Manschap">Manschap</option>
+            <option value="Aspirant Manschap">Aspirant Manschap</option>
+          </select></div>
+        </div>
+        <div class="veld2">
+          <div><label for="cm-straat">Straat</label><input id="cm-straat" type="text" placeholder="bijv. Handelstraat"></div>
+          <div><label for="cm-plaats">Plaats</label><input id="cm-plaats" type="text" placeholder="bijv. Nieuw-Beijerland"></div>
+        </div>
+      </div>
+
+      <div id="cm-verb" hidden>
+        <p class="sub" style="margin:4px 0 12px">Vul het gebeurtenis-id in van de VP-regel die weg moet. Laat eenheid-id leeg om het hele incident te verbergen, of vul het in om alleen die ene voertuig-regel weg te halen.</p>
+        <div class="veld2">
+          <div><label for="cm-gid">Gebeurtenis-id</label><input id="cm-gid" type="text" inputmode="numeric" placeholder="bijv. 66995379"></div>
+          <div><label for="cm-eenheid">Eenheid-id (optioneel)</label><input id="cm-eenheid" type="text" inputmode="numeric"></div>
+        </div>
+      </div>
+
+      <div class="modal-actie">
+        <button type="button" class="knop annuleer" id="cm-annuleer">Annuleren</button>
+        <button type="submit" class="knop" id="cm-opslaan">Opslaan</button>
+      </div>
+      <div class="melding" id="cm-status" role="status" aria-live="polite"></div>
+    </form>
+  </div>
+</div>
+
 <div class="tip" id="tip" hidden></div>
 
 <script src="data.js"></script>
 <script src="bezetting.js"></script>
 <script src="beschikbaarheid.js"></script>
-<script src="correcties.js"></script>
 <script src="js/config.js"></script>
 <script src="js/dashboard.js"></script>
 <script type="module" src="js/auth.js"></script>
