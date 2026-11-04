@@ -37,17 +37,16 @@ $$('.tabknop').forEach(b => b.addEventListener('click', () => toonTab(b.dataset.
    later per ploeglid op user_id. */
 async function haalCorrecties(){
   try{
-    const { data, error } = await supabase.from('uitruk_correcties').select('*');
-    if(error || !data) return { toevoegen:[], verwijderen:[] };
-    const toevoegen = [], verwijderen = [];
-    for(const r of data){
-      if(r.soort === 'verwijderen'){
-        verwijderen.push({ user_id:r.user_id, gebeurtenis_id:r.gebeurtenis_id, eenheid_id:r.eenheid_id });
-      } else {
-        toevoegen.push({ user_id:r.user_id, begin_op:r.begin_op, tijd_bekend:r.tijd_bekend,
-          prioriteit:r.prioriteit, opkomst:r.opkomst, melding:r.melding, straat:r.straat, plaats:r.plaats, rol:r.rol });
-      }
-    }
+    const [{ data: deel }, { data: verb }] = await Promise.all([
+      supabase.from('uitruk_deelnemers').select('user_id,opkomst,rol,incident:uitruk_incidenten(begin_op,tijd_bekend,prioriteit,melding,straat,plaats)'),
+      supabase.from('uitruk_verbergen').select('user_id,gebeurtenis_id,eenheid_id'),
+    ]);
+    const toevoegen = (deel || []).filter(d => d.incident).map(d => ({
+      user_id:d.user_id, opkomst:d.opkomst, rol:d.rol,
+      begin_op:d.incident.begin_op, tijd_bekend:d.incident.tijd_bekend, prioriteit:d.incident.prioriteit,
+      melding:d.incident.melding, straat:d.incident.straat, plaats:d.incident.plaats,
+    }));
+    const verwijderen = (verb || []).map(v => ({ user_id:v.user_id, gebeurtenis_id:v.gebeurtenis_id, eenheid_id:v.eenheid_id }));
     return { toevoegen, verwijderen };
   }catch(e){ return { toevoegen:[], verwijderen:[] }; }
 }
@@ -129,7 +128,7 @@ let ledenGeladen = false;
 $('#beheer-knop').addEventListener('click', async () => {
   $('#tabbalk').hidden = true; $('#dash').hidden = true; $('#view-beheer').hidden = false;
   scrollTo(0,0);
-  if(!ledenGeladen){ ledenGeladen = true; await laadLeden(); vulCorrSelects(); laadCorrecties(); }
+  if(!ledenGeladen){ ledenGeladen = true; await laadLeden(); vulBeheerSelects(); laadUitrukken(); }
 });
 $('#terug-knop').addEventListener('click', () => {
   $('#view-beheer').hidden = true; $('#tabbalk').hidden = false; $('#dash').hidden = false;
@@ -351,147 +350,214 @@ async function verwijderLid(id){
   await laadLeden();
 }
 
-/* ============ HANDMATIGE UITRUKKEN (BEHEER) ============ */
-let correcties = [];
-let corrFilter = '';
+/* ============ HANDMATIGE UITRUKKEN OP UITRUK-NIVEAU (BEHEER) ============ */
+let incidenten = [];
+let verbergen = [];
+let uitrukFilter = '';
 const OPK_LABEL = { 3:'Uitgerukt', 4:'Kazerne', 1:'Niet opgekomen' };
+const ROLLEN = ['Bevelvoerder','Chauffeur TS','Chauffeur VEB','Manschap','Aspirant Manschap'];
 const dkort = s => new Date(s).toLocaleDateString('nl-NL', { day:'numeric', month:'short', year:'numeric' });
 
 function ledNaam(l){ return l.naam || ((l.voornaam||'')+' '+(l.achternaam||'')).trim(); }
 function ledLabel(uid){ const l = leden.find(x => String(x.vp_id) === String(uid)); return l ? ledNaam(l) : ('VP '+uid); }
+function ledenMetVp(){ return leden.filter(l => l.vp_id).slice().sort((a,b) => ledNaam(a).localeCompare(ledNaam(b))); }
 
-function vulCorrSelects(){
-  const metVp = leden.filter(l => l.vp_id).slice().sort((a,b) => ledNaam(a).localeCompare(ledNaam(b)));
-  const opts = metVp.map(l => `<option value="${esc(l.vp_id)}">${esc(ledNaam(l))}</option>`).join('');
-  const lid = $('#cm-lid'); if(lid) lid.innerHTML = opts || '<option value="">— geen leden met VP-id —</option>';
-  const f = $('#corr-filter'); if(f){ const cur = f.value; f.innerHTML = '<option value="">Alle leden</option>' + opts; f.value = cur; }
+function vulBeheerSelects(){
+  const opts = ledenMetVp().map(l => `<option value="${esc(l.vp_id)}">${esc(ledNaam(l))}</option>`).join('');
+  const f = $('#uitruk-filter'); if(f){ const cur = f.value; f.innerHTML = '<option value="">Alle leden</option>' + opts; f.value = cur; }
+  const v = $('#vm-lid'); if(v) v.innerHTML = opts || '<option value="">— geen leden met VP-id —</option>';
 }
 
-async function laadCorrecties(){
-  melding('#corr-melding','');
-  const { data, error } = await supabase.from('uitruk_correcties').select('*')
-    .order('begin_op', { ascending:false, nullsFirst:false });
-  if(error){ melding('#corr-melding', vertaalFout(error.message), 'fout'); return; }
-  correcties = data || [];
-  renderCorrecties();
+async function laadUitrukken(){
+  melding('#uitruk-melding',''); melding('#verb-melding','');
+  const [{ data: inc, error: e1 }, { data: verb, error: e2 }] = await Promise.all([
+    supabase.from('uitruk_incidenten').select('*, deelnemers:uitruk_deelnemers(user_id,opkomst,rol)').order('begin_op', { ascending:false, nullsFirst:false }),
+    supabase.from('uitruk_verbergen').select('*').order('id', { ascending:true }),
+  ]);
+  if(e1){ melding('#uitruk-melding', vertaalFout(e1.message), 'fout'); return; }
+  if(e2){ melding('#verb-melding', vertaalFout(e2.message), 'fout'); }
+  incidenten = inc || [];
+  verbergen = verb || [];
+  renderUitrukken();
+  renderVerbergen();
 }
 
-function renderCorrecties(){
-  const body = $('#corr-body'); if(!body) return;
-  const lijst = correcties.filter(c => !corrFilter || String(c.user_id) === String(corrFilter));
-  $('#corr-telt').textContent = lijst.length + (lijst.length === 1 ? ' regel' : ' regels');
+function renderUitrukken(){
+  const body = $('#uitruk-body'); if(!body) return;
+  const lijst = incidenten.filter(i => !uitrukFilter || (i.deelnemers||[]).some(d => String(d.user_id) === String(uitrukFilter)));
+  $('#uitruk-telt').textContent = lijst.length + (lijst.length === 1 ? ' uitruk' : ' uitrukken');
   if(!lijst.length){
-    body.innerHTML = '<tr><td colspan="7" style="color:var(--slate)">Nog geen handmatige uitrukken. Voeg er een toe met “+ Uitruk toevoegen”.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="color:var(--slate)">Nog geen handmatige uitrukken. Voeg er een toe met “+ Uitruk toevoegen”.</td></tr>';
     return;
   }
-  body.innerHTML = lijst.map(c => {
-    const naam = esc(ledLabel(c.user_id));
-    const acties = `<div class="acties"><button class="knop-rand" data-cedit="${c.id}">Bewerken</button><button class="knop-rand rood" data-cdel="${c.id}">Verwijderen</button></div>`;
-    if(c.soort === 'verwijderen'){
-      const amber = 'background:#FDF1E3;color:#B5700E;border-color:#F0D8B3';
-      const det = 'gebeurtenis ' + esc(c.gebeurtenis_id) + (c.eenheid_id ? (' · eenheid ' + esc(c.eenheid_id)) : '');
-      return `<tr><td>${naam}</td><td colspan="4"><span class="pill" style="${amber}">VP-regel verbergen</span> <span class="dim">${det}</span></td><td>${acties}</td></tr>`;
-    }
-    const tijd = (c.tijd_bekend === false) ? '' : `<span class="pct">${new Date(c.begin_op).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})}</span>`;
-    const prio = (c.prioriteit != null && c.prioriteit !== '') ? `<span class="prio P${c.prioriteit}">P${c.prioriteit}</span>` : '<span class="dim">–</span>';
-    const loc = `${esc(c.straat||'–')}${c.plaats?`<span class="pct">${esc(c.plaats)}</span>`:''}`;
+  body.innerHTML = lijst.map(i => {
+    const d = i.deelnemers || [];
+    const tel = { 3:0, 4:0, 1:0 }; d.forEach(x => { tel[x.opkomst] = (tel[x.opkomst]||0)+1; });
+    const brok = [];
+    if(tel[3]) brok.push(tel[3]+' uitgerukt'); if(tel[4]) brok.push(tel[4]+' kazerne'); if(tel[1]) brok.push(tel[1]+' niet');
+    const tijd = (i.tijd_bekend === false || !i.begin_op) ? '' : `<span class="pct">${new Date(i.begin_op).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})}</span>`;
+    const prio = (i.prioriteit != null && i.prioriteit !== '') ? `<span class="prio P${i.prioriteit}">P${i.prioriteit}</span>` : '<span class="dim">–</span>';
+    const loc = `${esc(i.straat||'–')}${i.plaats?`<span class="pct">${esc(i.plaats)}</span>`:''}`;
+    const deel = `${d.length} ${d.length===1?'lid':'leden'}${brok.length?`<span class="pct">${brok.join(' · ')}</span>`:''}`;
     return `<tr>
-      <td>${naam}</td>
-      <td>${c.begin_op?dkort(c.begin_op):'–'}${tijd}</td>
+      <td>${i.begin_op?dkort(i.begin_op):'–'}${tijd}</td>
       <td>${prio}</td>
-      <td>${esc(c.melding||'–')}</td>
+      <td>${esc(i.melding||'–')}</td>
       <td>${loc}</td>
-      <td>${OPK_LABEL[c.opkomst]||'–'}</td>
-      <td>${acties}</td></tr>`;
+      <td>${deel}</td>
+      <td><div class="acties"><button class="knop-rand" data-iedit="${i.id}">Bewerken</button><button class="knop-rand rood" data-idel="${i.id}">Verwijderen</button></div></td></tr>`;
   }).join('');
-  body.querySelectorAll('[data-cedit]').forEach(b => b.onclick = () => openCorr(Number(b.dataset.cedit)));
-  body.querySelectorAll('[data-cdel]').forEach(b => b.onclick = () => verwijderCorr(Number(b.dataset.cdel)));
+  body.querySelectorAll('[data-iedit]').forEach(b => b.onclick = () => openInc(Number(b.dataset.iedit)));
+  body.querySelectorAll('[data-idel]').forEach(b => b.onclick = () => verwijderInc(Number(b.dataset.idel)));
 }
 
-$('#corr-filter').addEventListener('change', e => { corrFilter = e.target.value; renderCorrecties(); });
-
-function corrSoortWissel(){
-  const soort = $('#cm-soort').value;
-  $('#cm-toe').hidden  = (soort !== 'toevoegen');
-  $('#cm-verb').hidden = (soort !== 'verwijderen');
+function renderVerbergen(){
+  const body = $('#verb-body'); if(!body) return;
+  const lijst = verbergen.filter(v => !uitrukFilter || String(v.user_id) === String(uitrukFilter));
+  $('#verb-telt').textContent = lijst.length + (lijst.length === 1 ? ' regel' : ' regels');
+  if(!lijst.length){
+    body.innerHTML = '<tr><td colspan="4" style="color:var(--slate)">Geen verborgen VP-regels.</td></tr>';
+    return;
+  }
+  body.innerHTML = lijst.map(v => `<tr>
+    <td>${esc(ledLabel(v.user_id))}</td>
+    <td>${esc(v.gebeurtenis_id)}</td>
+    <td>${v.eenheid_id ? esc(v.eenheid_id) : '<span class="dim">hele incident</span>'}</td>
+    <td><div class="acties"><button class="knop-rand" data-vedit="${v.id}">Bewerken</button><button class="knop-rand rood" data-vdel="${v.id}">Verwijderen</button></div></td></tr>`).join('');
+  body.querySelectorAll('[data-vedit]').forEach(b => b.onclick = () => openVerb(Number(b.dataset.vedit)));
+  body.querySelectorAll('[data-vdel]').forEach(b => b.onclick = () => verwijderVerb(Number(b.dataset.vdel)));
 }
-$('#cm-soort').addEventListener('change', corrSoortWissel);
 
-function openCorr(id){
-  const c = id ? correcties.find(x => x.id === id) : null;
-  $('#cm-id').value    = c ? c.id : '';
-  $('#cm-titel').textContent = c ? 'Uitruk bewerken' : 'Uitruk toevoegen';
-  $('#cm-soort').value = c ? c.soort : 'toevoegen';
-  $('#cm-lid').value   = c ? String(c.user_id) : ($('#cm-lid').options[0] ? $('#cm-lid').options[0].value : '');
-  // toevoegen-velden
+$('#uitruk-filter').addEventListener('change', e => { uitrukFilter = e.target.value; renderUitrukken(); renderVerbergen(); });
+
+/* --- Uitruk-modal (incident + deelnemers) --- */
+function bouwDeelGrid(statusPerUid){
+  const rolOpts = '<option value="">—</option>' + ROLLEN.map(r => `<option value="${r}">${r}</option>`).join('');
+  $('#im-deel').innerHTML = ledenMetVp().map(l => {
+    const st = statusPerUid[String(l.vp_id)] || {};
+    const sel = v => st.opkomst != null && String(st.opkomst) === v ? ' selected' : '';
+    const rolSel = r => (st.rol || '') === r ? ' selected' : '';
+    const uit = String(st.opkomst) === '3';
+    return `<div class="deel-rij">
+      <span class="deel-naam">${esc(ledNaam(l))}</span>
+      <select class="deel-opk" data-uid="${esc(l.vp_id)}">
+        <option value=""${st.opkomst==null?' selected':''}>—</option>
+        <option value="3"${sel('3')}>Uitgerukt</option>
+        <option value="4"${sel('4')}>Kazerne</option>
+        <option value="1"${sel('1')}>Niet opgekomen</option>
+      </select>
+      <select class="deel-rol" data-uid="${esc(l.vp_id)}"${uit?'':' disabled'}>${rolOpts.replace('<option value=""', `<option value=""${st.rol?'':' selected'}`)}</select>
+    </div>`;
+  }).join('');
+  // rol pas actief als status = uitgerukt
+  $('#im-deel').querySelectorAll('.deel-opk').forEach(s => {
+    const syncRol = () => { const rol = s.closest('.deel-rij').querySelector('.deel-rol'); rol.disabled = (s.value !== '3'); if(s.value !== '3') rol.value = ''; };
+    s.addEventListener('change', syncRol);
+  });
+  // bestaande rol-selectie zetten
+  for(const uid in statusPerUid){ const st = statusPerUid[uid]; if(st.rol){ const r = $('#im-deel .deel-rol[data-uid="'+uid+'"]'); if(r){ r.disabled = String(st.opkomst)!=='3'; r.value = st.rol; } } }
+}
+
+function openInc(id){
+  const i = id ? incidenten.find(x => x.id === id) : null;
+  $('#im-id').value = i ? i.id : '';
+  $('#im-titel').textContent = i ? 'Uitruk bewerken' : 'Uitruk toevoegen';
   let datum = '', tijd = '';
-  if(c && c.begin_op){ const d = new Date(c.begin_op);
+  if(i && i.begin_op){ const d = new Date(i.begin_op);
     datum = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     tijd  = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-  $('#cm-datum').value   = datum;
-  $('#cm-geentijd').checked = c ? (c.tijd_bekend === false) : false;
-  $('#cm-tijd').value    = (c && c.tijd_bekend === false) ? '' : tijd;
-  $('#cm-opkomst').value = c && c.opkomst != null ? String(c.opkomst) : '3';
-  $('#cm-prio').value    = c && c.prioriteit != null ? String(c.prioriteit) : '';
-  $('#cm-melding').value = c ? (c.melding||'') : '';
-  $('#cm-rol').value     = c ? (c.rol||'') : '';
-  $('#cm-straat').value  = c ? (c.straat||'') : '';
-  $('#cm-plaats').value  = c ? (c.plaats||'') : '';
-  // verwijderen-velden
-  $('#cm-gid').value     = c ? (c.gebeurtenis_id||'') : '';
-  $('#cm-eenheid').value = c ? (c.eenheid_id||'') : '';
-  corrSoortWissel();
-  melding('#cm-status','');
-  $('#overlay-corr').hidden = false;
-  $('#cm-lid').focus();
+  $('#im-datum').value   = datum;
+  $('#im-geentijd').checked = i ? (i.tijd_bekend === false) : false;
+  $('#im-tijd').value    = (i && i.tijd_bekend === false) ? '' : tijd;
+  $('#im-prio').value    = i && i.prioriteit != null ? String(i.prioriteit) : '';
+  $('#im-melding').value = i ? (i.melding||'') : '';
+  $('#im-straat').value  = i ? (i.straat||'') : '';
+  $('#im-plaats').value  = i ? (i.plaats||'') : '';
+  const statusPerUid = {};
+  if(i){ for(const d of (i.deelnemers||[])) statusPerUid[String(d.user_id)] = { opkomst:d.opkomst, rol:d.rol }; }
+  bouwDeelGrid(statusPerUid);
+  melding('#im-status','');
+  $('#overlay-inc').hidden = false;
+  $('#im-datum').focus();
 }
-function sluitCorr(){ $('#overlay-corr').hidden = true; }
-$('#nieuw-corr').onclick  = () => openCorr(null);
-$('#cm-annuleer').onclick = sluitCorr;
-$('#overlay-corr').addEventListener('click', e => { if(e.target === $('#overlay-corr')) sluitCorr(); });
+function sluitInc(){ $('#overlay-inc').hidden = true; }
+$('#nieuw-uitruk').onclick = () => openInc(null);
+$('#im-annuleer').onclick  = sluitInc;
+$('#overlay-inc').addEventListener('click', e => { if(e.target === $('#overlay-inc')) sluitInc(); });
 
-$('#f-corr').addEventListener('submit', async e => {
+$('#f-inc').addEventListener('submit', async e => {
   e.preventDefault();
-  const soort = $('#cm-soort').value;
-  const user_id = $('#cm-lid').value;
-  if(!user_id){ melding('#cm-status','Kies eerst een ploeglid.', 'fout'); return; }
-  const rij = { id: $('#cm-id').value || null, soort, user_id: Number(user_id) };
-  if(soort === 'toevoegen'){
-    const datum = $('#cm-datum').value;
-    if(!datum){ melding('#cm-status','Datum is verplicht.', 'fout'); return; }
-    const geenTijd = $('#cm-geentijd').checked;
-    const tijd = $('#cm-tijd').value;
-    const bekend = !geenTijd && !!tijd;
-    const begin = new Date(`${datum}T${bekend ? tijd : '00:00'}`);   // lokale tijd (NL) → ISO (UTC) bij opslaan
-    rij.begin_op = begin.toISOString();
-    rij.tijd_bekend = bekend;
-    rij.opkomst = Number($('#cm-opkomst').value);
-    rij.prioriteit = $('#cm-prio').value;
-    rij.melding = $('#cm-melding').value.trim();
-    rij.rol = $('#cm-rol').value;
-    rij.straat = $('#cm-straat').value.trim();
-    rij.plaats = $('#cm-plaats').value.trim();
-  } else {
-    const gid = $('#cm-gid').value.trim();
-    if(!gid){ melding('#cm-status','Vul het gebeurtenis-id in van de VP-regel die weg moet.', 'fout'); return; }
-    rij.gebeurtenis_id = gid;
-    rij.eenheid_id = $('#cm-eenheid').value.trim();
-  }
-  $('#cm-opslaan').disabled = true; melding('#cm-status','Opslaan…');
-  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'corr_save', rij } });
-  $('#cm-opslaan').disabled = false;
-  if(error || !data || !data.ok){ melding('#cm-status', (data && data.error) || vertaalFout((error && error.message) || 'Opslaan mislukt.'), 'fout'); return; }
-  sluitCorr();
-  await laadCorrecties();
+  const datum = $('#im-datum').value;
+  if(!datum){ melding('#im-status','Datum is verplicht.', 'fout'); return; }
+  const geenTijd = $('#im-geentijd').checked, tijd = $('#im-tijd').value;
+  const bekend = !geenTijd && !!tijd;
+  const begin = new Date(`${datum}T${bekend ? tijd : '00:00'}`);
+  const incident = { id: $('#im-id').value || null, begin_op: begin.toISOString(), tijd_bekend: bekend,
+    prioriteit: $('#im-prio').value, melding: $('#im-melding').value.trim(),
+    straat: $('#im-straat').value.trim(), plaats: $('#im-plaats').value.trim() };
+  const deelnemers = [];
+  $('#im-deel').querySelectorAll('.deel-rij').forEach(rij => {
+    const opk = rij.querySelector('.deel-opk').value;
+    if(!opk) return;
+    const uid = rij.querySelector('.deel-opk').dataset.uid;
+    const rol = rij.querySelector('.deel-rol').value;
+    deelnemers.push({ user_id: Number(uid), opkomst: Number(opk), rol: (opk === '3' ? rol : '') });
+  });
+  if(!deelnemers.length){ melding('#im-status','Koppel minstens één ploeglid met een status.', 'fout'); return; }
+  $('#im-opslaan').disabled = true; melding('#im-status','Opslaan…');
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'inc_save', incident, deelnemers } });
+  $('#im-opslaan').disabled = false;
+  if(error || !data || !data.ok){ melding('#im-status', (data && data.error) || vertaalFout((error && error.message) || 'Opslaan mislukt.'), 'fout'); return; }
+  sluitInc();
+  await laadUitrukken();
 });
 
-async function verwijderCorr(id){
-  const c = correcties.find(x => x.id === id); if(!c) return;
-  const wat = c.soort === 'verwijderen' ? ('de verberg-regel voor '+ledLabel(c.user_id)) : (ledLabel(c.user_id)+' — '+(c.melding||'uitruk')+' op '+(c.begin_op?dkort(c.begin_op):''));
-  if(!confirm('Deze handmatige regel verwijderen?\n\n'+wat)) return;
-  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'corr_del', id } });
-  if(error || !data || !data.ok){ melding('#corr-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
-  await laadCorrecties();
+async function verwijderInc(id){
+  const i = incidenten.find(x => x.id === id); if(!i) return;
+  if(!confirm('Deze uitruk en alle gekoppelde ploegleden verwijderen?\n\n'+(i.melding||'uitruk')+' op '+(i.begin_op?dkort(i.begin_op):''))) return;
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'inc_del', id } });
+  if(error || !data || !data.ok){ melding('#uitruk-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
+  await laadUitrukken();
+}
+
+/* --- Verbergen-modal --- */
+function openVerb(id){
+  const v = id ? verbergen.find(x => x.id === id) : null;
+  $('#vm-id').value  = v ? v.id : '';
+  $('#vm-titel').textContent = v ? 'Verborgen VP-regel bewerken' : 'VP-regel verbergen';
+  $('#vm-lid').value = v ? String(v.user_id) : ($('#vm-lid').options[0] ? $('#vm-lid').options[0].value : '');
+  $('#vm-gid').value = v ? (v.gebeurtenis_id||'') : '';
+  $('#vm-eenheid').value = v ? (v.eenheid_id||'') : '';
+  melding('#vm-status','');
+  $('#overlay-verb').hidden = false;
+  $('#vm-lid').focus();
+}
+function sluitVerb(){ $('#overlay-verb').hidden = true; }
+$('#nieuw-verb').onclick  = () => openVerb(null);
+$('#vm-annuleer').onclick = sluitVerb;
+$('#overlay-verb').addEventListener('click', e => { if(e.target === $('#overlay-verb')) sluitVerb(); });
+
+$('#f-verb').addEventListener('submit', async e => {
+  e.preventDefault();
+  const user_id = $('#vm-lid').value;
+  if(!user_id){ melding('#vm-status','Kies eerst een ploeglid.', 'fout'); return; }
+  const gid = $('#vm-gid').value.trim();
+  if(!gid){ melding('#vm-status','Gebeurtenis-id is verplicht.', 'fout'); return; }
+  const rij = { id: $('#vm-id').value || null, user_id: Number(user_id), gebeurtenis_id: gid, eenheid_id: $('#vm-eenheid').value.trim() };
+  $('#vm-opslaan').disabled = true; melding('#vm-status','Opslaan…');
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'verb_save', rij } });
+  $('#vm-opslaan').disabled = false;
+  if(error || !data || !data.ok){ melding('#vm-status', (data && data.error) || vertaalFout((error && error.message) || 'Opslaan mislukt.'), 'fout'); return; }
+  sluitVerb();
+  await laadUitrukken();
+});
+
+async function verwijderVerb(id){
+  const v = verbergen.find(x => x.id === id); if(!v) return;
+  if(!confirm('Deze verberg-regel verwijderen? De VP-regel verschijnt dan weer in “Mijn uitrukken”.')) return;
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'verb_del', id } });
+  if(error || !data || !data.ok){ melding('#verb-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
+  await laadUitrukken();
 }
 
 /* ============ OPSTART ============ */
