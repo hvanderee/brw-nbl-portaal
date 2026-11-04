@@ -1,12 +1,12 @@
 """
 Haalt de actuele bezetting van post Nieuw-Beijerland op uit Pre-Com
-en schrijft alleen geaggregeerde cijfers (aantallen per functie) naar bezetting.js.
+en schrijft geaggregeerde cijfers (aantallen per functie) naar bezetting.js.
+Daarnaast — met akkoord van de ploeg — de namen van wie op dít moment per functie
+beschikbaar staat ("Status nu"): nu_namen. Geen historie van namen, alleen de actuele stand.
 
 Inloggegevens komen uit omgevingsvariabelen (in GitHub: Settings > Secrets):
   PRECOM_USER, PRECOM_PASS
 Optioneel: PRECOM_GROUP_ID (standaard 4915), PRECOM_DAGEN (standaard 28)
-
-Er worden GEEN namen opgeslagen of gelogd: alleen tellingen.
 """
 import json, os, sys, re
 from datetime import datetime, timedelta
@@ -85,6 +85,51 @@ def slot_index(k):
     k = k.rjust(4, "0"); return int(k[:2]) * 4 + int(k[2:]) // 15
 
 
+# DetailsOccupancy is HTML met per functie (<li class="staffing-item" data-function-id=..>) een
+# lijst roosterleden (<ul class='stuff'> met per lid een <li>). Per lid markeren
+# .marked-line.red/.orange de vensters (left%/width%) waarin iemand afgemeld staat. Iemand telt NU
+# als beschikbaar wanneer de huidige tijd (now_pct, % van het etmaal) in géén van die vensters valt.
+# Dit reproduceert exact de tellingen uit AvailablePeople/DayCounters en levert de namen erbij.
+_DETAIL_FUNCS = {1: "Bevelvoerder", 333: "Chauffeur TS", 219: "Manschap", 100: "Asp. Manschap"}
+
+def parse_namen_nu(html, now_pct):
+    out = {}
+    if not html:
+        return out
+    funcs = [(m.start(), int(m.group(1))) for m in re.finditer(r'data-function-id=["\']?(\d+)', html)]
+    for idx, (pos, fid) in enumerate(funcs):
+        label = _DETAIL_FUNCS.get(fid)
+        if not label:
+            continue
+        end = funcs[idx + 1][0] if idx + 1 < len(funcs) else len(html)
+        block = html[pos:end]
+        persons = [(pm.start(), pm.group(1))
+                   for pm in re.finditer(r"stuff-title['\"]\s+title=['\"]([^'\"]+)['\"]", block)]
+        namen = []
+        for k, (ppos, naam) in enumerate(persons):
+            pend = persons[k + 1][0] if k + 1 < len(persons) else len(block)
+            seg = block[ppos:pend]
+            # Alleen roosterleden met een groene beschikbaarheidsbalk tellen nu mee. Wie niet op het
+            # rooster staat heeft geen afmelding (geen rood/oranje venster) maar ook geen 'green' —
+            # die mag niet als beschikbaar gelden. Dit sluit de telling aan op Pre-Com's DayCounters.
+            if not re.search(r"stuff-line[^>]*\bgreen\b", seg):
+                continue
+            afgemeld = False
+            for sm in re.finditer(r"class=['\"]marked-line\s+(?:red|orange)[^'\"]*['\"][^>]*style=['\"]([^'\"]+)['\"]", seg):
+                style = sm.group(1)
+                lm = re.search(r"left:\s*([\d.]+)%", style)
+                wm = re.search(r"width:\s*([\d.]+)%", style)
+                if lm and wm:
+                    L, W = float(lm.group(1)), float(wm.group(1))
+                    if L <= now_pct < L + W:
+                        afgemeld = True
+                        break
+            if not afgemeld:
+                namen.append(naam)
+        out[label] = namen
+    return out
+
+
 def main():
     nu = datetime.now(TZ); vandaag = nu.date()
     s = requests.Session(); s.headers["User-Agent"] = "NBL-portaal/1.0 (bezettingsoverzicht)"
@@ -127,6 +172,16 @@ def main():
     _av_nu = lambda fid: _besch.get(fid, 0) if fid else 0
     _nu_t = tier_van(_av_nu(id_bev), _av_nu(id_chf), _av_nu(id_man), _av_nu(id_asp))
     nu_tier = {"tier": _nu_t, "label": _tlab[_nu_t], "koppen": _av_nu(id_man), "aspirant": _av_nu(id_asp)}
+    # Wie staat er nú per functie beschikbaar (Status nu) — uit DetailsOccupancy.
+    _now_pct = (nu.hour * 60 + nu.minute) / 1440 * 100
+    nu_namen = parse_namen_nu(j.get("DetailsOccupancy") or "", _now_pct)
+    # Veiligheid: alleen namen bewaren die exact met Pre-Com's eigen telling (beschikbaar) kloppen.
+    # Wijkt het af, dan is de naam-parse voor die functie onbetrouwbaar -> weglaten, zodat het
+    # portaal enkel het (correcte) getal toont in plaats van een mogelijk verkeerde naam.
+    _besch_lbl = {f["label"]: f["beschikbaar"] for f in functies}
+    for _lbl in list(nu_namen):
+        if len(nu_namen[_lbl]) != _besch_lbl.get(_lbl):
+            del nu_namen[_lbl]
 
     # 2. Vooruitblik: per kwartier of de TS de komende periode op ondergrens én op streefsterkte kan uitrukken
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
@@ -188,6 +243,7 @@ def main():
         "ts_bezet_pct": round(100 * alle_ok / alle) if alle else None,
         "periode_dagen": DAGEN,
         "nu_tier": nu_tier,
+        "nu_namen": nu_namen,
         "heatmap": heatmap,
         "heatmap_streef": heatmap_streef,
         "heatmap_tier": heatmap_tier,
@@ -196,7 +252,7 @@ def main():
         "dekking_per_rol": dekking_per_rol,
     }
     with open(UIT, "w", encoding="utf-8") as fh:
-        fh.write("/* Automatisch gegenereerd uit Pre-Com — alleen aantallen, geen namen. Niet handmatig bewerken. */\n")
+        fh.write("/* Automatisch gegenereerd uit Pre-Com. Niet handmatig bewerken. */\n")
         fh.write("window.NBL_BEZETTING = " + json.dumps(uit, ensure_ascii=False) + ";\n")
     print("OK:", ", ".join(f"{f['label']} {f['beschikbaar']}/{f['nodig']}" for f in functies),
           f"| ondergrens {sterkte['ondergrens']['pct']}% · streefsterkte {sterkte['streef']['pct']}%"
