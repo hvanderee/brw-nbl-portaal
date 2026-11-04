@@ -41,8 +41,9 @@ a{color:var(--blue)}
 .card h2{font-size:30px;margin-bottom:6px}
 .card .intro{margin:0 0 26px;color:var(--slate);font-size:15px}
 label{display:block;font-size:13px;font-weight:600;color:var(--slate);margin:16px 0 6px}
-input[type=email],input[type=password],input[type=text]{width:100%;height:48px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);padding:0 14px;font-size:16px;color:var(--ink);transition:border-color .15s,background .15s}
-input:focus{border-color:var(--ink);background:var(--white);outline:none}
+input[type=email],input[type=password],input[type=text],input[type=date],input[type=time],.modal select{width:100%;height:48px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);padding:0 14px;font-size:16px;color:var(--ink);transition:border-color .15s,background .15s}
+input:focus,.modal select:focus{border-color:var(--ink);background:var(--white);outline:none}
+.corr-select{height:40px;border:1.5px solid var(--line);border-radius:9px;background:var(--surface);padding:0 12px;font-size:14px;color:var(--ink);cursor:pointer}
 .knop{width:100%;height:50px;margin-top:22px;border:0;border-radius:9px;background:var(--ink);color:var(--white);font-size:16px;font-weight:600;cursor:pointer;transition:background .15s}
 .knop:hover{background:var(--graphite)}
 .knop:disabled{opacity:.55;cursor:default}
@@ -180,10 +181,10 @@ td .em{color:var(--slate);font-size:13px}
 #dash td{padding:12px 10px 12px 0;border-bottom:1px solid var(--line);vertical-align:top}
 #dash tr:last-child td{border-bottom:0}
 #dash td.r,#dash th.r{text-align:right;padding-right:0}
-#dash .prio{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--line);color:var(--slate)}
-#dash .prio.P1{border-color:var(--red-accessible);color:var(--red-accessible)}
+#app .prio{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:5px;border:1px solid var(--line);color:var(--slate)}
+#app .prio.P1{border-color:var(--red-accessible);color:var(--red-accessible)}
 #dash .boven{color:var(--red-accessible);font-weight:600}
-#dash .dim{color:var(--dim)}
+#app .dim{color:var(--dim)}
 #dash .bron{font-size:13px;color:var(--slate)}
 #dash .opk{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:5px;border:1px solid var(--line);color:var(--slate)}
 #dash .opk3{background:#E6F2EB;border-color:#c9e4d4;color:var(--groen)}
@@ -193,6 +194,11 @@ td .em{color:var(--slate);font-size:13px}
 #dash #mijn-body tr.hmrow td{background:#FCF4DC}
 #dash #mijn-body tr.hmrow:hover td{background:#F8EBC4}
 .hm-leg{display:inline-block;width:12px;height:12px;border-radius:3px;background:#FCF4DC;border:1px solid #e3d093;vertical-align:-1px;margin-right:5px}
+/* Beheertabel handmatige uitrukken: vul de breedte en laat melding/locatie afbreken zodat de
+   actieknoppen op een normaal scherm zichtbaar blijven zonder horizontaal scrollen. */
+#corr-blok table.besch{width:100%}
+#corr-blok table.besch td:nth-child(4),#corr-blok table.besch td:nth-child(5){white-space:normal;min-width:130px}
+#view-beheer .tabelwrap{overflow-x:auto}
 #dash .tabelwrap{overflow-x:auto}
 #dash .typen{display:grid;gap:16px}
 #dash .type .rij{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
@@ -245,29 +251,29 @@ td .em{color:var(--slate);font-size:13px}
 
 /* beschikbaarheidstabel */
 #besch-meta{font-size:13px;color:var(--slate);margin-top:-6px;margin-bottom:16px}
-#dash table.besch{font-size:14px}
-#dash table.besch th,#dash table.besch td{white-space:nowrap;padding:13px 16px;font-variant-numeric:tabular-nums}
-#dash table.besch th{vertical-align:bottom;line-height:1.25}
-#dash table.besch th span{display:block;font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--dim);margin-top:3px}
-#dash table.besch td.r,#dash table.besch th.r{padding-right:16px}
-#dash table.besch td .eh{font-size:.8em;color:var(--dim);font-weight:400;margin-left:1px}
-#dash table.besch td .pct{color:var(--slate);font-size:.92em;margin-left:7px}
-#dash table.besch .sep{border-left:1px solid var(--line)}
-#dash table.besch .kol-sort{background:rgba(207,49,27,.05)}
-#dash table.besch thead .kol-sort{background:rgba(207,49,27,.08)}
-#dash table.besch tbody tr:not(.totaal):not(.gem):hover td{background:var(--surface)}
-#dash table.besch tbody tr:not(.totaal):not(.gem):hover td.kol-sort{background:rgba(207,49,27,.09)}
-#dash table.besch tr.totaal td{border-top:2px solid var(--graphite);border-bottom:0;padding-top:14px}
-#dash table.besch tr.totaal td b{font-family:var(--font-display);font-size:16px}
+#app table.besch{font-size:14px}
+#app table.besch th,#app table.besch td{white-space:nowrap;padding:13px 16px;font-variant-numeric:tabular-nums}
+#app table.besch th{vertical-align:bottom;line-height:1.25}
+#app table.besch th span{display:block;font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--dim);margin-top:3px}
+#app table.besch td.r,#app table.besch th.r{padding-right:16px}
+#app table.besch td .eh{font-size:.8em;color:var(--dim);font-weight:400;margin-left:1px}
+#app table.besch td .pct{color:var(--slate);font-size:.92em;margin-left:7px}
+#app table.besch .sep{border-left:1px solid var(--line)}
+#app table.besch .kol-sort{background:rgba(207,49,27,.05)}
+#app table.besch thead .kol-sort{background:rgba(207,49,27,.08)}
+#app table.besch tbody tr:not(.totaal):not(.gem):hover td{background:var(--surface)}
+#app table.besch tbody tr:not(.totaal):not(.gem):hover td.kol-sort{background:rgba(207,49,27,.09)}
+#app table.besch tr.totaal td{border-top:2px solid var(--graphite);border-bottom:0;padding-top:14px}
+#app table.besch tr.totaal td b{font-family:var(--font-display);font-size:16px}
 /* gegroepeerde koppen (2 kopregels) */
-#dash table.besch thead tr.grp th{text-align:center;border-bottom:1px solid var(--line);padding-bottom:7px;font-size:12px;color:var(--slate);text-transform:uppercase;letter-spacing:.03em}
-#dash table.besch thead tr.grp th[rowspan]{text-align:left;vertical-align:bottom;border-bottom:0}
-#dash table.besch thead tr.grp .grp-mee{border-left:1px solid var(--line)}
-#dash table.besch .van{font-weight:400;color:var(--dim);font-size:11px;text-transform:none;letter-spacing:0}
+#app table.besch thead tr.grp th{text-align:center;border-bottom:1px solid var(--line);padding-bottom:7px;font-size:12px;color:var(--slate);text-transform:uppercase;letter-spacing:.03em}
+#app table.besch thead tr.grp th[rowspan]{text-align:left;vertical-align:bottom;border-bottom:0}
+#app table.besch thead tr.grp .grp-mee{border-left:1px solid var(--line)}
+#app table.besch .van{font-weight:400;color:var(--dim);font-size:11px;text-transform:none;letter-spacing:0}
 /* gemiddelde-per-persoon rij */
-#dash table.besch tr.gem td{border-top:1px solid var(--line);color:var(--slate);padding-top:12px}
-#dash table.besch tr.gem td:first-child{font-weight:600}
-#dash table.besch tr.gem td b{font-weight:600}
+#app table.besch tr.gem td{border-top:1px solid var(--line);color:var(--slate);padding-top:12px}
+#app table.besch tr.gem td:first-child{font-weight:600}
+#app table.besch tr.gem td b{font-weight:600}
 /* leeswijzer */
 .leeswijzer{margin-top:16px;border:1px solid var(--line);border-radius:10px;background:var(--white);font-size:13px}
 .leeswijzer summary{cursor:pointer;padding:12px 16px;font-weight:600;color:var(--ink);list-style-position:inside}
