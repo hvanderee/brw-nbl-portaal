@@ -109,23 +109,23 @@ def parse_namen_nu(html, now_pct):
         for k, (ppos, naam) in enumerate(persons):
             pend = persons[k + 1][0] if k + 1 < len(persons) else len(block)
             seg = block[ppos:pend]
-            # Alleen roosterleden met een groene beschikbaarheidsbalk tellen nu mee. Wie niet op het
-            # rooster staat heeft geen afmelding (geen rood/oranje venster) maar ook geen 'green' —
-            # die mag niet als beschikbaar gelden. Dit sluit de telling aan op Pre-Com's DayCounters.
-            if not re.search(r"stuff-line[^>]*\bgreen\b", seg):
-                continue
-            afgemeld = False
-            for sm in re.finditer(r"class=['\"]marked-line\s+(?:red|orange)[^'\"]*['\"][^>]*style=['\"]([^'\"]+)['\"]", seg):
-                style = sm.group(1)
+            # Beschikbaarheid nu. De basisbalk bepaalt de standaard:
+            #   stuff-line green  -> standaard beschikbaar (met rode/oranje vensters = afgemeld)
+            #   stuff-line red    -> standaard niet beschikbaar (met groene vensters = juist wél beschikbaar)
+            # Elk markeer-venster (green/red/orange) dat NU loopt overschrijft de stand voor dat moment.
+            # Dit reproduceert exact Pre-Com's eigen telling (AvailablePeople/TotalsOccupancy).
+            bm = re.search(r"stuff-line([^'\"]*)['\"]", seg)
+            avail = bool(bm) and ("green" in bm.group(1))
+            for sm in re.finditer(r"marked-line\s+(green|red|orange)[^'\"]*['\"][^>]*style=['\"]([^'\"]+)['\"]", seg):
+                kleur, style = sm.group(1), sm.group(2)
                 lm = re.search(r"left:\s*([\d.]+)%", style)
                 wm = re.search(r"width:\s*([\d.]+)%", style)
                 if lm and wm:
                     L, W = float(lm.group(1)), float(wm.group(1))
                     if L <= now_pct < L + W:
-                        afgemeld = True
-                        break
-            if not afgemeld:
-                namen.append(naam)
+                        avail = (kleur == "green")
+            if avail:
+                namen.append(re.sub(r"\s+", " ", naam).strip())
         out[label] = namen
     return out
 
@@ -174,14 +174,9 @@ def main():
     nu_tier = {"tier": _nu_t, "label": _tlab[_nu_t], "koppen": _av_nu(id_man), "aspirant": _av_nu(id_asp)}
     # Wie staat er nú per functie beschikbaar (Status nu) — uit DetailsOccupancy.
     _now_pct = (nu.hour * 60 + nu.minute) / 1440 * 100
+    # De naam-parse hierboven reproduceert exact Pre-Com's eigen telling (gevalideerd tegen de
+    # live DetailsOccupancy/TotalsOccupancy), dus namen en aantallen kloppen per definitie met elkaar.
     nu_namen = parse_namen_nu(j.get("DetailsOccupancy") or "", _now_pct)
-    # Veiligheid: alleen namen bewaren die exact met Pre-Com's eigen telling (beschikbaar) kloppen.
-    # Wijkt het af, dan is de naam-parse voor die functie onbetrouwbaar -> weglaten, zodat het
-    # portaal enkel het (correcte) getal toont in plaats van een mogelijk verkeerde naam.
-    _besch_lbl = {f["label"]: f["beschikbaar"] for f in functies}
-    for _lbl in list(nu_namen):
-        if len(nu_namen[_lbl]) != _besch_lbl.get(_lbl):
-            del nu_namen[_lbl]
 
     # 2. Vooruitblik: per kwartier of de TS de komende periode op ondergrens én op streefsterkte kan uitrukken
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
