@@ -283,6 +283,13 @@ const OPKOMST_LABEL = { 1:"Niet opgekomen", 3:"Uitgerukt", 4:"Kazerne" };
 const OPKOMST_MEE   = new Set([3]);
 const nlDatKort = s => new Date(s).toLocaleDateString("nl-NL",{day:"numeric",month:"short",year:"numeric"});
 const kortRol = r => !r ? "–" : r.replace(/vrijwillig\s*/i,"").replace(/\s*\(.*?\)\s*/g," ").replace(/\s+/g," ").trim().replace(/^./,c=>c.toUpperCase());
+// Korte melding: haakjes (VE: n, buiten, …) weg, locatie na ' - ' weg, en afkappen zodat de tabel
+// op één scherm past. De volledige locatie staat al in de kolom Locatie.
+const kortMelding = s => {
+  let t = String(s||"Melding").replace(/\s*\([^)]*\)/g," ").split(" - ")[0].replace(/\s+/g," ").trim();
+  if(t.length > 30) t = t.slice(0,28).replace(/[\s,.-]+$/,"")+"…";
+  return t || "Melding";
+};
 
 function renderMijn(rows, corr){
   const jaar = new Date().getFullYear();
@@ -351,10 +358,10 @@ function renderMijn(rows, corr){
     const loc = `${esc(i.street_full||"–")}${i.city_name?`<span class="pct">${esc(i.city_name)}</span>`:""}`;
     const tijd = (hm && r._geentijd) ? "" : `<span class="pct">${dt.toLocaleTimeString("nl-NL",{hour:"2-digit",minute:"2-digit"})}</span>`;
     const prio = (i.prioriteit!=null && i.prioriteit!=="") ? `<span class="prio P${i.prioriteit}">P${i.prioriteit}</span>` : '<span class="dim">–</span>';
-    return `<tr class="${isUit?"":"nietmee"}">
+    return `<tr class="${isUit?"":"nietmee"}${hm?" hmrow":""}"${hm?' title="Handmatig aangevuld uit de opkomstdatabase (zie toelichting onderaan)"':""}>
       <td>${nlDatKort(i.begin_op)}${tijd}</td>
       <td>${prio}</td>
-      <td>${esc(mld)}${hm?' <span class="tag-hm" title="Handmatig toegevoegd uit de Verschillen-verklaring">handmatig</span>':""}</td>
+      <td>${esc(kortMelding(mld))}</td>
       <td>${loc}</td>
       <td>${isUit ? esc(kortRol(r.rol)) : '<span class="dim">–</span>'}</td>
       <td class="r"><span class="opk opk${r.opkomst}">${OPKOMST_LABEL[r.opkomst]||("code "+r.opkomst)}</span></td>
