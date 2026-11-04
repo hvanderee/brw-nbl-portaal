@@ -280,21 +280,39 @@
         </div>
       </section>
 
-      <section class="sectie" id="corr-blok">
+      <section class="sectie" id="uitruk-blok">
         <div class="sk">
           <h3>Handmatige uitrukken</h3>
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-            <select id="corr-filter" class="corr-select" aria-label="Filter op ploeglid"><option value="">Alle leden</option></select>
-            <span class="telt" id="corr-telt"></span>
-            <button class="knop-klein" id="nieuw-corr">+ Uitruk toevoegen</button>
+            <select id="uitruk-filter" class="corr-select" aria-label="Filter op ploeglid"><option value="">Alle leden</option></select>
+            <span class="telt" id="uitruk-telt"></span>
+            <button class="knop-klein" id="nieuw-uitruk">+ Uitruk toevoegen</button>
           </div>
         </div>
-        <p class="uitleg">Uitrukken die in Veiligheidspaspoort ontbreken, hier per ploeglid toevoegen — ze verschijnen geel gearceerd in “Mijn uitrukken”. Met “VP-regel verbergen” haal je juist een onterechte VP-regel (OBL/buurpost of verkeerde status) weg.</p>
-        <div class="melding" id="corr-melding" role="status" aria-live="polite"></div>
+        <p class="uitleg">Maak een uitruk aan die in Veiligheidspaspoort ontbreekt en koppel de ploegleden met hun status (uitgerukt, kazerne of niet opgekomen). De uitruk verschijnt geel gearceerd bij elk gekoppeld lid in “Mijn uitrukken”.</p>
+        <div class="melding" id="uitruk-melding" role="status" aria-live="polite"></div>
         <div class="tabelwrap">
           <table class="besch">
-            <thead><tr><th>Ploeglid</th><th>Datum</th><th>Prio</th><th>Melding</th><th>Locatie</th><th>Opkomst</th><th></th></tr></thead>
-            <tbody id="corr-body"></tbody>
+            <thead><tr><th>Datum</th><th>Prio</th><th>Melding</th><th>Locatie</th><th>Deelnemers</th><th></th></tr></thead>
+            <tbody id="uitruk-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="sectie" id="verb-blok">
+        <div class="sk">
+          <h3>Verborgen VP-regels</h3>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <span class="telt" id="verb-telt"></span>
+            <button class="knop-klein" id="nieuw-verb">+ VP-regel verbergen</button>
+          </div>
+        </div>
+        <p class="uitleg">VP-regels die niet in “Mijn uitrukken” thuishoren (OBL/buurpost of een verkeerde status). Laat eenheid-id leeg om het hele incident te verbergen, of vul het in om alleen die ene voertuig-regel weg te halen.</p>
+        <div class="melding" id="verb-melding" role="status" aria-live="polite"></div>
+        <div class="tabelwrap">
+          <table class="besch">
+            <thead><tr><th>Ploeglid</th><th>Gebeurtenis-id</th><th>Eenheid-id</th><th></th></tr></thead>
+            <tbody id="verb-body"></tbody>
           </table>
         </div>
       </section>
@@ -341,67 +359,59 @@
   </div>
 </div>
 
-<!-- Modal: handmatige uitruk toevoegen/bewerken -->
-<div class="overlay" id="overlay-corr" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cm-titel">
-    <h3 id="cm-titel">Uitruk toevoegen</h3>
-    <p class="sub">Een uitruk die in Veiligheidspaspoort ontbreekt, of een VP-regel die eruit moet.</p>
-    <form id="f-corr">
-      <input type="hidden" id="cm-id">
+<!-- Modal: handmatige uitruk (incident + deelnemers) -->
+<div class="overlay" id="overlay-inc" hidden>
+  <div class="modal modal-breed" role="dialog" aria-modal="true" aria-labelledby="im-titel">
+    <h3 id="im-titel">Uitruk toevoegen</h3>
+    <p class="sub">Vul de uitruk in en zet per ploeglid de status. Alleen leden met een status worden gekoppeld.</p>
+    <form id="f-inc">
+      <input type="hidden" id="im-id">
       <div class="veld2">
-        <div><label for="cm-lid">Ploeglid</label><select id="cm-lid" required></select></div>
-        <div><label for="cm-soort">Type</label><select id="cm-soort">
-          <option value="toevoegen">Uitruk toevoegen</option>
-          <option value="verwijderen">VP-regel verbergen</option>
+        <div><label for="im-datum">Datum</label><input id="im-datum" type="date" required></div>
+        <div><label for="im-tijd">Tijd</label><input id="im-tijd" type="time">
+          <label class="check" style="margin-top:8px"><input type="checkbox" id="im-geentijd"> Tijd onbekend</label></div>
+      </div>
+      <div class="veld2">
+        <div><label for="im-melding">Melding</label><input id="im-melding" type="text" placeholder="bijv. Gebouwbrand"></div>
+        <div><label for="im-prio">Prioriteit</label><select id="im-prio">
+          <option value="">—</option><option value="1">P1</option><option value="2">P2</option>
         </select></div>
       </div>
-
-      <div id="cm-toe">
-        <div class="veld2">
-          <div><label for="cm-datum">Datum</label><input id="cm-datum" type="date"></div>
-          <div><label for="cm-tijd">Tijd</label><input id="cm-tijd" type="time">
-            <label class="check" style="margin-top:8px"><input type="checkbox" id="cm-geentijd"> Tijd onbekend</label></div>
-        </div>
-        <div class="veld2">
-          <div><label for="cm-opkomst">Opkomst</label><select id="cm-opkomst">
-            <option value="3">Uitgerukt (met de TS mee)</option>
-            <option value="4">Kazerne (wel opgekomen)</option>
-            <option value="1">Niet opgekomen</option>
-          </select></div>
-          <div><label for="cm-prio">Prioriteit</label><select id="cm-prio">
-            <option value="">—</option><option value="1">P1</option><option value="2">P2</option>
-          </select></div>
-        </div>
-        <div class="veld2">
-          <div><label for="cm-melding">Melding</label><input id="cm-melding" type="text" placeholder="bijv. Gebouwbrand"></div>
-          <div><label for="cm-rol">Functie (bij uitgerukt)</label><select id="cm-rol">
-            <option value="">—</option>
-            <option value="Bevelvoerder">Bevelvoerder</option>
-            <option value="Chauffeur TS">Chauffeur TS</option>
-            <option value="Chauffeur VEB">Chauffeur VEB</option>
-            <option value="Manschap">Manschap</option>
-            <option value="Aspirant Manschap">Aspirant Manschap</option>
-          </select></div>
-        </div>
-        <div class="veld2">
-          <div><label for="cm-straat">Straat</label><input id="cm-straat" type="text" placeholder="bijv. Handelstraat"></div>
-          <div><label for="cm-plaats">Plaats</label><input id="cm-plaats" type="text" placeholder="bijv. Nieuw-Beijerland"></div>
-        </div>
+      <div class="veld2">
+        <div><label for="im-straat">Straat</label><input id="im-straat" type="text" placeholder="bijv. Handelstraat"></div>
+        <div><label for="im-plaats">Plaats</label><input id="im-plaats" type="text" placeholder="bijv. Nieuw-Beijerland"></div>
       </div>
 
-      <div id="cm-verb" hidden>
-        <p class="sub" style="margin:4px 0 12px">Vul het gebeurtenis-id in van de VP-regel die weg moet. Laat eenheid-id leeg om het hele incident te verbergen, of vul het in om alleen die ene voertuig-regel weg te halen.</p>
-        <div class="veld2">
-          <div><label for="cm-gid">Gebeurtenis-id</label><input id="cm-gid" type="text" inputmode="numeric" placeholder="bijv. 66995379"></div>
-          <div><label for="cm-eenheid">Eenheid-id (optioneel)</label><input id="cm-eenheid" type="text" inputmode="numeric"></div>
-        </div>
-      </div>
+      <label style="margin-top:18px">Ploegleden <span class="van">— laat op “—” staan wie niet bij deze uitruk hoort</span></label>
+      <div class="deel-kop"><span>Naam</span><span>Status</span><span>Functie</span></div>
+      <div class="deel-grid" id="im-deel"></div>
 
       <div class="modal-actie">
-        <button type="button" class="knop annuleer" id="cm-annuleer">Annuleren</button>
-        <button type="submit" class="knop" id="cm-opslaan">Opslaan</button>
+        <button type="button" class="knop annuleer" id="im-annuleer">Annuleren</button>
+        <button type="submit" class="knop" id="im-opslaan">Opslaan</button>
       </div>
-      <div class="melding" id="cm-status" role="status" aria-live="polite"></div>
+      <div class="melding" id="im-status" role="status" aria-live="polite"></div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: VP-regel verbergen -->
+<div class="overlay" id="overlay-verb" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vm-titel">
+    <h3 id="vm-titel">VP-regel verbergen</h3>
+    <p class="sub">Haal een onterechte VP-regel (OBL/buurpost of verkeerde status) uit “Mijn uitrukken”.</p>
+    <form id="f-verb">
+      <input type="hidden" id="vm-id">
+      <div><label for="vm-lid">Ploeglid</label><select id="vm-lid" required></select></div>
+      <div class="veld2">
+        <div><label for="vm-gid">Gebeurtenis-id</label><input id="vm-gid" type="text" inputmode="numeric" placeholder="bijv. 66995379"></div>
+        <div><label for="vm-eenheid">Eenheid-id (optioneel)</label><input id="vm-eenheid" type="text" inputmode="numeric"></div>
+      </div>
+      <div class="modal-actie">
+        <button type="button" class="knop annuleer" id="vm-annuleer">Annuleren</button>
+        <button type="submit" class="knop" id="vm-opslaan">Opslaan</button>
+      </div>
+      <div class="melding" id="vm-status" role="status" aria-live="polite"></div>
     </form>
   </div>
 </div>
