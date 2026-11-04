@@ -362,6 +362,10 @@ function ledNaam(l){ return l.naam || ((l.voornaam||'')+' '+(l.achternaam||'')).
 function ledLabel(uid){ const l = leden.find(x => String(x.vp_id) === String(uid)); return l ? ledNaam(l) : ('VP '+uid); }
 function ledenMetVp(){ return leden.filter(l => l.vp_id).slice().sort((a,b) => ledNaam(a).localeCompare(ledNaam(b))); }
 
+// Veilig binden: slaat over als het element (nog) niet bestaat, zodat een half-geüploade combinatie
+// van bestanden nooit de hele pagina kan laten crashen (grijs scherm).
+const bind = (sel, ev, fn) => { const e = $(sel); if(e) e.addEventListener(ev, fn); };
+
 function vulBeheerSelects(){
   const opts = ledenMetVp().map(l => `<option value="${esc(l.vp_id)}">${esc(ledNaam(l))}</option>`).join('');
   const f = $('#uitruk-filter'); if(f){ const cur = f.value; f.innerHTML = '<option value="">Alle leden</option>' + opts; f.value = cur; }
@@ -428,7 +432,7 @@ function renderVerbergen(){
   body.querySelectorAll('[data-vdel]').forEach(b => b.onclick = () => verwijderVerb(Number(b.dataset.vdel)));
 }
 
-$('#uitruk-filter').addEventListener('change', e => { uitrukFilter = e.target.value; renderUitrukken(); renderVerbergen(); });
+bind('#uitruk-filter', 'change', e => { uitrukFilter = e.target.value; renderUitrukken(); renderVerbergen(); });
 
 /* --- Uitruk-modal (incident + deelnemers) --- */
 function bouwDeelGrid(statusPerUid){
@@ -481,11 +485,11 @@ function openInc(id){
   $('#im-datum').focus();
 }
 function sluitInc(){ $('#overlay-inc').hidden = true; }
-$('#nieuw-uitruk').onclick = () => openInc(null);
-$('#im-annuleer').onclick  = sluitInc;
-$('#overlay-inc').addEventListener('click', e => { if(e.target === $('#overlay-inc')) sluitInc(); });
+bind('#nieuw-uitruk', 'click', () => openInc(null));
+bind('#im-annuleer', 'click', sluitInc);
+bind('#overlay-inc', 'click', e => { if(e.target === $('#overlay-inc')) sluitInc(); });
 
-$('#f-inc').addEventListener('submit', async e => {
+bind('#f-inc', 'submit', async e => {
   e.preventDefault();
   const datum = $('#im-datum').value;
   if(!datum){ melding('#im-status','Datum is verplicht.', 'fout'); return; }
@@ -533,11 +537,11 @@ function openVerb(id){
   $('#vm-lid').focus();
 }
 function sluitVerb(){ $('#overlay-verb').hidden = true; }
-$('#nieuw-verb').onclick  = () => openVerb(null);
-$('#vm-annuleer').onclick = sluitVerb;
-$('#overlay-verb').addEventListener('click', e => { if(e.target === $('#overlay-verb')) sluitVerb(); });
+bind('#nieuw-verb', 'click', () => openVerb(null));
+bind('#vm-annuleer', 'click', sluitVerb);
+bind('#overlay-verb', 'click', e => { if(e.target === $('#overlay-verb')) sluitVerb(); });
 
-$('#f-verb').addEventListener('submit', async e => {
+bind('#f-verb', 'submit', async e => {
   e.preventDefault();
   const user_id = $('#vm-lid').value;
   if(!user_id){ melding('#vm-status','Kies eerst een ploeglid.', 'fout'); return; }
