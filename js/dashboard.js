@@ -99,7 +99,7 @@ function teken(){
 
   $("#recent").innerHTML = D.recente_uitrukken.map(([dt,tijd,prio,mld,ut,bez])=>{ const [m,sc]=ut.split(":").map(Number);
     const boven = prio==="P1" && (m+sc/60)>D.norm.uitruktijd_min;
-    return `<tr><td>${new Date(dt).toLocaleDateString("nl-NL",{day:"numeric",month:"short"}).replace(" ","&nbsp;")}<br><span class="dim">${tijd}</span></td><td><span class="prio ${prio}">${prio}</span></td><td>${mld}</td><td class="r ${boven?"boven":""}">${ut}</td><td class="r">${bez}</td></tr>`; }).join("");
+    return `<tr><td>${new Date(dt).toLocaleDateString("nl-NL",{day:"numeric",month:"short"}).replace(" ","&nbsp;")}<span class="pct">${tijd}</span></td><td><span class="prio ${prio}">${prio}</span></td><td>${mld}</td><td class="r ${boven?"boven":""}">${ut}</td><td class="r">${bez}</td></tr>`; }).join("");
 
   const ty=[...D.meldingstypen].sort((a,b)=>b[1]-a[1]), mx=ty[0][1];
   $("#typen").innerHTML = ty.map(([t,v])=>`<div class="type"><div class="rij"><span>${t}</span><b>${v}</b></div><div class="balk"><i style="width:${v/mx*100}%"></i></div></div>`).join("");
