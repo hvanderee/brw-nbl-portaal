@@ -47,7 +47,13 @@ function teken(){
   }
   const fl = B ? B.functies.filter(x=>x.nodig>0).map(x=>({nm:x.label,n:x.beschikbaar,nodig:x.nodig}))
               : Object.keys(D.norm.bezetting).map(k=>({nm:k,n:D.nu[k]||0,nodig:D.norm.bezetting[k]}));
-  const namenVan = x => (B && B.nu_namen && Array.isArray(B.nu_namen[x.nm])) ? B.nu_namen[x.nm] : null;
+  // Namen bij "Status nu" alleen tonen als ze exact overeenkomen met de Pre-Com-telling.
+  // Zo verschijnt niemand die niet (meer) op het rooster staat; bij twijfel tonen we enkel het getal.
+  const namenVan = x => {
+    if(!(B && B.nu_namen && Array.isArray(B.nu_namen[x.nm]))) return null;
+    const nn = B.nu_namen[x.nm];
+    return nn.length === x.n ? nn : null;
+  };
   let vol=true, f="";
   for(const x of fl){ const ok=x.n>=x.nodig; if(!ok) vol=false;
     const nn = namenVan(x);
@@ -68,7 +74,7 @@ function teken(){
     ["Uitrukken "+D.jaar, tot, `${tot>=vtot?"+":"−"}${Math.abs(tot-vtot)} t.o.v. zelfde periode ${D.jaar-1}`],
     ["Gem. uitruktijd (P1)", fmtMin(gem), `P1-streefwaarde ${fmtMin(D.norm.uitruktijd_min)} · excl. reanimatie`],
     (nt
-      ? ["Bezetting vandaag", `<span style="color:${TIERKLEUR[nt.tier]};font-size:30px;display:block;text-align:center">${TIERKORT[nt.tier]}</span>`, `${nt.koppen}${nt.aspirant?` + ${nt.aspirant} asp`:""}`]
+      ? ["Bezetting vandaag", `<span style="color:${TIERKLEUR[nt.tier]}">${TIERKORT[nt.tier]}</span>`, `${nt.koppen}${nt.aspirant?` + ${nt.aspirant} asp`:""}`]
       : ["TS bezet", (B?B.ts_bezet_pct:D.beschikbaarheid_30d_pct)+"%", B?`Van de tijd, afgelopen ${B.periode_dagen} dagen`:"Van de tijd, afgelopen 30 dagen"]),
     ["Maanden binnen norm", tijden.filter(v=>v<=D.norm.uitruktijd_min).length+" van "+tijden.length, "Gemiddelde uitruktijd ≤ streefwaarde"],
   ];
