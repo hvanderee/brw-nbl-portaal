@@ -37,7 +37,7 @@ async function laadMijnUitrukken(){
   try{
     const { data, error } = await supabase
       .from('vp_opkomst')
-      .select('user_id,opkomst,rol,uitgerukt_op,terug_op,incident:vp_incidenten(gebeurtenis_id,nummer,begin_op,prioriteit,city_name,street_full,object_functie,classificatie)')
+      .select('user_id,opkomst,rol,eenheid_id,uitgerukt_op,terug_op,incident:vp_incidenten(gebeurtenis_id,nummer,begin_op,prioriteit,city_name,street_full,object_functie,classificatie)')
       .order('id', { ascending:false });
     const rijen = error ? [] : (data || []);
     // Handmatige correcties (Verschillen-verklaring) over de VP-data heen leggen,
@@ -114,6 +114,7 @@ async function naarApp(){
   toonTab('overzicht');
   await laadBezetting();
   if(window.NBLDash) window.NBLDash.teken();
+  startBezettingRefresh();
 }
 
 /* Live bezetting uit Supabase (geplande Edge Function). Valt terug op bezetting.js als er
@@ -123,6 +124,23 @@ async function laadBezetting(){
     const { data, error } = await supabase.from('bezetting').select('data').eq('id', 1).maybeSingle();
     if(!error && data && data.data) window.NBL_BEZETTING = data.data;
   }catch(e){ /* fallback: window.NBL_BEZETTING uit bezetting.js blijft staan */ }
+}
+
+/* Status nu actueel houden: de Edge Function werkt de bezetting-tabel elke 5 min bij (pg_cron),
+   dus halen we 'm met dezelfde frequentie opnieuw op en hertekenen we het Overzicht. Een
+   openstaande pagina toont zo nooit een verouderde stand. Ververst ook meteen bij terugkeer op
+   het tabblad. */
+let bezettingTimer = null;
+async function herlaadBezetting(){
+  await laadBezetting();
+  if(window.NBLDash) window.NBLDash.teken();
+}
+function startBezettingRefresh(){
+  if(bezettingTimer) return;                         // niet dubbel plannen
+  bezettingTimer = setInterval(herlaadBezetting, 5 * 60 * 1000);   // elke 5 min, gelijk aan de Pre-Com-ophaler
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') herlaadBezetting();
+  });
 }
 
 function startAuth(fout){ toon('#auth'); kaart('c-login'); if(fout) melding('#l-melding', fout, 'fout'); }
