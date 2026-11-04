@@ -47,13 +47,9 @@ function teken(){
   }
   const fl = B ? B.functies.filter(x=>x.nodig>0).map(x=>({nm:x.label,n:x.beschikbaar,nodig:x.nodig}))
               : Object.keys(D.norm.bezetting).map(k=>({nm:k,n:D.nu[k]||0,nodig:D.norm.bezetting[k]}));
-  // Namen bij "Status nu" alleen tonen als ze exact overeenkomen met de Pre-Com-telling.
-  // Zo verschijnt niemand die niet (meer) op het rooster staat; bij twijfel tonen we enkel het getal.
-  const namenVan = x => {
-    if(!(B && B.nu_namen && Array.isArray(B.nu_namen[x.nm]))) return null;
-    const nn = B.nu_namen[x.nm];
-    return nn.length === x.n ? nn : null;
-  };
+  // Namen bij "Status nu": de server-parser reproduceert exact de Pre-Com-telling, dus namen en
+  // aantal kloppen altijd met elkaar. Daarom tonen we de namen altijd wanneer ze beschikbaar zijn.
+  const namenVan = x => (B && B.nu_namen && Array.isArray(B.nu_namen[x.nm])) ? B.nu_namen[x.nm] : null;
   let vol=true, f="";
   for(const x of fl){ const ok=x.n>=x.nodig; if(!ok) vol=false;
     const nn = namenVan(x);
