@@ -52,10 +52,13 @@ async function haalCorrecties(){
 }
 
 /* Mijn uitrukken: leest de eigen opkomst-regels uit Supabase (RLS geeft alleen eigen regels). */
-let mijnGeladen = false;
+// Niet permanent cachen: elke keer dat het tabblad opent opnieuw laden, zodat een zojuist in
+// Beheer toegevoegde handmatige uitruk meteen zichtbaar is (alleen een vlag om dubbel-laden te
+// voorkomen als er al een fetch loopt).
+let mijnBezig = false;
 async function laadMijnUitrukken(){
   if(!window.NBLDash || !window.NBLDash.renderMijn) return;
-  if(mijnGeladen) return; mijnGeladen = true;
+  if(mijnBezig) return; mijnBezig = true;
   try{
     const { data, error } = await supabase
       .from('vp_opkomst')
@@ -74,6 +77,7 @@ async function laadMijnUitrukken(){
     };
     window.NBLDash.renderMijn(rijen, corr);
   }catch(e){ window.NBLDash.renderMijn([]); }
+  finally{ mijnBezig = false; }
 }
 
 /* ============ AUTH ============ */
@@ -150,9 +154,43 @@ async function naarApp(){
   toonTab('overzicht');
   await laadBezetting();
   await laadBeschikbaarheidUren();
+  await laadAggregaten();
   if(window.NBLDash) window.NBLDash.teken();
   startBezettingRefresh();
 }
+
+/* Live uitruk-aggregaten (VP + handmatige correcties, server-side opgeteld door de Edge Function
+   'uitruk_aggregaten'). We leggen ze over de statische export heen: de per-lid deelname + meta
+   (beschikbaarheid.js) en de ploegtellingen per maand/prio/dagdeel (data.js). Zo werkt een
+   toegevoegde uitruk overal door. Lukt het niet, dan blijven de statische cijfers staan. */
+async function laadAggregaten(){
+  try{
+    const { data } = await supabase.from('uitruk_aggregaten').select('data').eq('id', 1).maybeSingle();
+    const a = data && data.data; if(!a) return;
+    // Veiligheid: alleen overlayen als er echt cijfers zijn (anders statische cijfers laten staan).
+    if(!a.meta || !a.meta.n_uitrukken || !(a.leden && a.leden.length)) return;
+    const B = window.NBL_BESCHIKBAARHEID, D = window.NBL_DATA;
+    // Beschikbaarheid: per-lid deelname overschrijven (op naam), plus meta/denominatoren.
+    if(B && a.leden){
+      const perNaam = {}; for(const l of a.leden) perNaam[l.naam] = l;
+      const velden = ['mee_totaal','pct_mee_totaal','mee_p1','pct_mee_p1','mee_p2','pct_mee_p2','mee_odw','pct_mee_odw','mee_overig','pct_mee_overig','odw_p1','pct_odw_p1','odw_p2','pct_odw_p2','overig_p1','pct_overig_p1','overig_p2','pct_overig_p2'];
+      for(const l of (B.leden||[])){ const u = perNaam[l.naam]; if(u) for(const v of velden) l[v] = u[v]; }
+      if(B.meta && a.meta){ for(const k of ['n_uitrukken','n_prio1','n_prio2','n_odw','n_overig','n_odw_p1','n_odw_p2','n_overig_p1','n_overig_p2']) if(a.meta[k]!=null) B.meta[k] = a.meta[k];
+        if(a.meta.gem) B.meta.gem = a.meta.gem; }
+    }
+    // Overzicht/Uitrukken: ploegtellingen overschrijven.
+    if(D && a.ploeg){
+      if(a.ploeg.per_maand && D.uitrukken_per_maand) D.uitrukken_per_maand.dit_jaar = a.ploeg.per_maand.map(x=>x===0?null:x);
+      if(a.ploeg.prioriteit) D.prioriteit = a.ploeg.prioriteit;
+      if(a.ploeg.dagdeel) D.dagdeel = a.ploeg.dagdeel;
+    }
+  }catch(e){ /* statische cijfers blijven staan */ }
+}
+
+/* Na een Beheer-wijziging de aggregaten opnieuw laten berekenen (fire-and-forget). De dagelijkse
+   pg_cron is de vangnet-herberekening; dit maakt een wijziging meteen zichtbaar bij de volgende keer
+   dat iemand het portaal laadt. */
+function ververAggregaten(){ try{ supabase.functions.invoke('uitruk_aggregaten').catch(()=>{}); }catch(e){} }
 
 /* Live bezetting uit Supabase (geplande Edge Function). Valt terug op bezetting.js als er
    nog geen rij is of de query faalt. */
@@ -513,7 +551,7 @@ bind('#f-inc', 'submit', async e => {
   $('#im-opslaan').disabled = false;
   if(error || !data || !data.ok){ melding('#im-status', (data && data.error) || vertaalFout((error && error.message) || 'Opslaan mislukt.'), 'fout'); return; }
   sluitInc();
-  await laadUitrukken();
+  await laadUitrukken(); ververAggregaten();
 });
 
 async function verwijderInc(id){
@@ -521,7 +559,7 @@ async function verwijderInc(id){
   if(!confirm('Deze uitruk en alle gekoppelde ploegleden verwijderen?\n\n'+(i.melding||'uitruk')+' op '+(i.begin_op?dkort(i.begin_op):''))) return;
   const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'inc_del', id } });
   if(error || !data || !data.ok){ melding('#uitruk-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
-  await laadUitrukken();
+  await laadUitrukken(); ververAggregaten();
 }
 
 /* --- Verbergen-modal --- */
@@ -553,7 +591,7 @@ bind('#f-verb', 'submit', async e => {
   $('#vm-opslaan').disabled = false;
   if(error || !data || !data.ok){ melding('#vm-status', (data && data.error) || vertaalFout((error && error.message) || 'Opslaan mislukt.'), 'fout'); return; }
   sluitVerb();
-  await laadUitrukken();
+  await laadUitrukken(); ververAggregaten();
 });
 
 async function verwijderVerb(id){
@@ -561,7 +599,7 @@ async function verwijderVerb(id){
   if(!confirm('Deze verberg-regel verwijderen? De VP-regel verschijnt dan weer in “Mijn uitrukken”.')) return;
   const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'verb_del', id } });
   if(error || !data || !data.ok){ melding('#verb-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
-  await laadUitrukken();
+  await laadUitrukken(); ververAggregaten();
 }
 
 /* ============ OPSTART ============ */
