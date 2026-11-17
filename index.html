@@ -122,22 +122,27 @@
         <section class="sectie">
           <div class="sk"><h2>Beschikbaarheid en uitrukdeelname</h2></div>
           <p id="besch-meta" class="uitleg"></p>
+          <div class="besch-filter">
+            <input id="besch-naam" type="text" placeholder="Filter op naam — meerdere met komma's">
+            <button id="besch-filter-aan" class="knop-rand">Toepassen</button>
+            <button id="besch-filter-uit" class="knop-rand">Wissen</button>
+          </div>
           <div class="tabelwrap">
-            <table class="besch">
+            <table class="besch" id="besch-tabel">
               <thead>
                 <tr class="grp">
-                  <th rowspan="2">Naam</th>
+                  <th rowspan="2" class="sortbaar" data-k="naam">Naam</th>
                   <th colspan="2">Beschikbaarheid</th>
                   <th colspan="5" class="grp-mee">Uitrukken mee</th>
                 </tr>
                 <tr>
-                  <th class="r">Uren<span>totaal</span></th>
-                  <th class="r kol-sort">Overdag<span>werkdag</span></th>
-                  <th class="r sep">Totaal<span>van 57</span></th>
-                  <th class="r">Prio 1<span>van 29</span></th>
-                  <th class="r">Prio 2<span>van 28</span></th>
-                  <th class="r">Overdag<span>van 25</span></th>
-                  <th class="r">Overig<span>van 32</span></th>
+                  <th class="r sortbaar" data-k="uren_totaal">Uren<span>totaal</span></th>
+                  <th class="r sortbaar" data-k="uren_odw">Overdag<span>werkdag</span></th>
+                  <th class="r sep sortbaar" data-k="mee_totaal">Totaal<span>van 57</span></th>
+                  <th class="r sortbaar" data-k="mee_p1">Prio 1<span>van 29</span></th>
+                  <th class="r sortbaar" data-k="mee_p2">Prio 2<span>van 28</span></th>
+                  <th class="r sortbaar" data-k="mee_odw">Overdag<span>van 25</span></th>
+                  <th class="r sortbaar" data-k="mee_overig">Overig<span>van 32</span></th>
                 </tr>
               </thead>
               <tbody id="besch-body"></tbody>
@@ -146,7 +151,7 @@
           <details class="leeswijzer">
             <summary>Hoe lees je dit overzicht?</summary>
             <ul>
-              <li><b>Sortering.</b> Gesorteerd op beschikbare uren overdag op werkdagen (ma–vr 07:00–18:00).</li>
+              <li><b>Sortering.</b> Standaard op beschikbare uren overdag op werkdagen (ma–vr 07:00–18:00). Klik op een kolomkop om op die kolom te sorteren; nogmaals klikken keert de volgorde om.</li>
               <li><b>Opbouw.</b> Prio 1 + Prio 2 = totaal; overdag werkdag + overig = totaal.</li>
               <li><b>Percentage.</b> Het aandeel van alle uitrukken in die categorie waarbij iemand mee was.</li>
               <li><b>Beschikbaarheid.</b> Volgens Pre-Com — ‘niet afgemeld’ telt als beschikbaar.</li>
@@ -158,18 +163,18 @@
         <section class="sectie">
           <div class="sk"><h2>Uitsplitsing naar moment en prio</h2></div>
           <div class="tabelwrap">
-            <table class="besch">
+            <table class="besch" id="besch-kruis-tabel">
               <thead>
                 <tr class="grp">
-                  <th rowspan="2">Naam</th>
+                  <th rowspan="2" class="sortbaar" data-k="naam">Naam</th>
                   <th colspan="2">Overdag werkdag <span class="van">(van 25)</span></th>
                   <th colspan="2" class="grp-mee">Overig <span class="van">(van 32)</span></th>
                 </tr>
                 <tr>
-                  <th class="r">Prio 1<span>van 17</span></th>
-                  <th class="r">Prio 2<span>van 8</span></th>
-                  <th class="r sep">Prio 1<span>van 12</span></th>
-                  <th class="r">Prio 2<span>van 20</span></th>
+                  <th class="r sortbaar" data-k="odw_p1">Prio 1<span>van 17</span></th>
+                  <th class="r sortbaar" data-k="odw_p2">Prio 2<span>van 8</span></th>
+                  <th class="r sep sortbaar" data-k="overig_p1">Prio 1<span>van 12</span></th>
+                  <th class="r sortbaar" data-k="overig_p2">Prio 2<span>van 20</span></th>
                 </tr>
               </thead>
               <tbody id="besch-kruis-body"></tbody>
@@ -213,6 +218,7 @@
               <p class="uitleg">Hoe vaak elke functie de komende periode minstens de ondergrens haalt. De laagste is de smalste schakel.</p>
               <div class="typen" id="perRol"></div></div>
           </div>
+          <div id="rol-tekort" class="paraat-slot" hidden></div>
         </section>
       </div>
 
@@ -267,6 +273,20 @@
     <!-- ===== Beheer (alleen beheerder) ===== -->
     <div id="view-beheer" hidden>
       <button class="knop-rand" id="terug-knop" style="margin-bottom:18px">← Terug naar portaal</button>
+
+      <section class="sectie" id="vpimport-blok">
+        <div class="sk">
+          <h3>VP-import</h3>
+          <span class="telt" id="vpimport-bron"></span>
+        </div>
+        <p class="uitleg">Draai de sync in Veiligheidspaspoort en upload hier het bestand (<code>vp_sync.json</code>) dat je terugkrijgt. De incidenten en opkomst worden bijgewerkt in de database en alle cijfers (Mijn uitrukken, Beschikbaarheid, Uitrukken) worden daarna automatisch herberekend.</p>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:4px 0 10px">
+          <input type="file" id="vpimport-file" accept=".json,application/json">
+          <button class="knop-klein" id="vpimport-start" disabled>Importeren</button>
+        </div>
+        <div class="melding" id="vpimport-melding" role="status" aria-live="polite"></div>
+      </section>
+
       <section class="sectie" id="leden-blok">
         <div class="sk">
           <h3>Ploegleden</h3>
