@@ -108,17 +108,78 @@ function teken(){
   let t; addEventListener("resize",()=>{ clearTimeout(t); t=setTimeout(tekenGrafieken,120); });
 }
 
+// Sorteerstatus per tabel. Standaard = zoals voorheen: op beschikbare uren overdag-werkdag,
+// aflopend (dir -1). De data-volgorde in het bestand is al deze sortering, dus de standaard
+// komt exact overeen met hoe de pagina er eerst uitzag.
+let beschSort = { t1:{ key:'uren_odw', dir:-1 }, t2:{ key:null, dir:-1 } };
+function beschCmp(key, dir){
+  return (a,b)=>{
+    if(key==='naam') return dir * String(a.naam).localeCompare(String(b.naam),'nl');
+    const av = a[key]==null?-Infinity:a[key], bv = b[key]==null?-Infinity:b[key];
+    if(av===bv) return String(a.naam).localeCompare(String(b.naam),'nl');  // stabiele secundaire sortering
+    return dir * (av-bv);
+  };
+}
+function beschSorteer(leden, st){ return st.key==null ? leden.slice() : leden.slice().sort(beschCmp(st.key, st.dir)); }
+
+// Namenfilter: toon alleen leden waarvan de naam een van de ingevulde termen bevat (1 of meer).
+let beschNaamFilter = [];
+function beschFilterLeden(leden){
+  if(!beschNaamFilter.length) return leden;
+  return leden.filter(l => { const nm=(l.naam||'').toLowerCase(); return beschNaamFilter.some(t => nm.includes(t)); });
+}
+
+let beschWired = false;
+function beschWireKoppen(){
+  if(beschWired) return; beschWired = true;
+  const wire = (id, stKey) => {
+    const t = document.getElementById(id); if(!t) return;
+    const thead = t.querySelector('thead'); if(!thead) return;
+    thead.addEventListener('click', e=>{
+      const th = e.target.closest('th[data-k]'); if(!th) return;
+      const k = th.dataset.k, st = beschSort[stKey];
+      if(st.key===k) st.dir = -st.dir;                 // zelfde kolom: volgorde omkeren
+      else { st.key = k; st.dir = (k==='naam') ? 1 : -1; }  // andere kolom: naam oplopend, getallen aflopend
+      renderBeschikbaarheid();
+    });
+  };
+  wire('besch-tabel','t1');
+  wire('besch-kruis-tabel','t2');
+  // Namenfilter: termen uit het invoerveld (komma-gescheiden), toepassen/wissen.
+  const inp = document.getElementById('besch-naam');
+  const pasToe = () => {
+    beschNaamFilter = (inp && inp.value || '').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+    renderBeschikbaarheid();
+  };
+  const wis = () => { if(inp) inp.value=''; beschNaamFilter=[]; renderBeschikbaarheid(); };
+  const bAan = document.getElementById('besch-filter-aan'); if(bAan) bAan.addEventListener('click', pasToe);
+  const bUit = document.getElementById('besch-filter-uit'); if(bUit) bUit.addEventListener('click', wis);
+  if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); pasToe(); } });
+}
+function beschUpdateKoppen(){
+  const upd = (id, st) => {
+    const t = document.getElementById(id); if(!t) return;
+    t.querySelectorAll('th[data-k]').forEach(th=>{
+      th.classList.remove('kol-sort');
+      const oud = th.querySelector('.pijl'); if(oud) oud.remove();
+      if(st.key && th.dataset.k===st.key){
+        th.classList.add('kol-sort');
+        const s = document.createElement('span'); s.className='pijl'; s.textContent = st.dir<0?'▼':'▲';
+        th.insertBefore(s, th.firstChild);
+      }
+    });
+  };
+  upd('besch-tabel', beschSort.t1);
+  upd('besch-kruis-tabel', beschSort.t2);
+}
+
 function renderBeschikbaarheid(){
   const B = window.NBL_BESCHIKBAARHEID; if(!B) return;
   const m = B.meta, g = m.gem, mt = $("#besch-meta");
   if(mt) mt.textContent = `Periode ${nlDat(m.periode_start)} t/m ${nlDat(m.periode_eind)} · ${m.n_uitrukken} uitrukken (${m.n_prio1}× P1, ${m.n_prio2}× P2), waarvan ${m.n_odw} overdag op een werkdag (${m.pct_odw}%) · beschikbare uren rechtstreeks uit Pre-Com, 1× per dag bijgewerkt${m.uren_bijgewerkt?` (${nlDatTijd(m.uren_bijgewerkt)})`:""} · uitrukken uit de opkomstdatabase`;
   const dec = n => Number(n).toLocaleString('nl-NL');
-  const cel = (ct,pct,sep) => ct==null
-    ? `<td class="r${sep?' sep':''}"><span class="dim">–</span></td>`
-    : `<td class="r${sep?' sep':''}"><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
   // Kleur Overig-kolommen naar afwijking t.o.v. het gemiddelde.
   // Warm (oranje→rood) = gaat veel mee (mag minder); koel (lichtblauw→blauw) = gaat weinig mee (mag meer).
-  // Neutrale zone rond het gemiddelde; tint blijft licht zodat de tekst leesbaar is. Niet voor overdag.
   const _lerp = (a,b,t) => a.map((x,i)=>Math.round(x+(b[i]-x)*t));
   const bgDev = (ct, gem) => {
     if(gem==null || ct==null) return "";
@@ -129,36 +190,53 @@ function renderBeschikbaarheid(){
     const c = d>0 ? _lerp([232,130,14],[207,49,27],t) : _lerp([125,178,232],[37,99,235],t);
     return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
   };
-  const celC = (ct,pct,bg,sep) => ct==null
-    ? `<td class="r${sep?' sep':''}"><span class="dim">–</span></td>`
-    : `<td class="r${sep?' sep':''}"${bg?` style="background:${bg}"`:""}><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
-  // Eén Overig-oordeel per lid, leidend bepaald door de uitsplitsing naar moment en prio
-  // (som van beide prio-overig t.o.v. het gemiddelde). Dezelfde kleur kleurt zowel de
-  // totaal-Overig (tabel 1) als de Overig-cellen P1/P2 (tabel 2), zodat beide overzichten
-  // altijd hetzelfde verhaal vertellen.
   const gemOverig = g ? (g.overig_p1||0)+(g.overig_p2||0) : null;
   const bgOverig  = l => bgDev((l.overig_p1||0)+(l.overig_p2||0), gemOverig);
+  // Cel-bouwers. `act` = actieve sorteerkolom → krijgt de kol-sort-arcering.
+  const meeCell = (ct,pct,o={}) => {
+    const cls = `r${o.sep?' sep':''}${o.act?' kol-sort':''}`;
+    return ct==null ? `<td class="${cls}"><span class="dim">–</span></td>`
+      : `<td class="${cls}"${o.bg?` style="background:${o.bg}"`:""}><b>${ct}<span class="eh">×</span></b><span class="pct">${pct}%</span></td>`;
+  };
+  const urenCell = (html, act) => `<td class="r${act?' kol-sort':''}">${html}</td>`;
 
+  const K1 = beschSort.t1.key;
   const body = $("#besch-body");
   if(body){
-    body.innerHTML = B.leden.map(l=>`<tr>
-        <td><span class="nm">${l.naam}</span></td>
-        <td class="r">${fmtN(l.uren_totaal)}<span class="eh">u</span></td>
-        <td class="r kol-sort"><b>${fmtN(l.uren_odw)}<span class="eh">u</span></b><span class="pct">${l.pct_uren_odw}%</span></td>
-        ${cel(l.mee_totaal,l.pct_mee_totaal,true)}${cel(l.mee_p1,l.pct_mee_p1)}${cel(l.mee_p2,l.pct_mee_p2)}${cel(l.mee_odw,l.pct_mee_odw)}${celC(l.mee_overig,l.pct_mee_overig,bgOverig(l))}
-      </tr>`).join("")
-      + `<tr class="totaal"><td><b>Totaal ploeg</b></td><td class="r">${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span></td><td class="r kol-sort"><b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span></td><td class="r sep"></td><td class="r"></td><td class="r"></td><td class="r"></td><td class="r"></td></tr>`
-      + (g?`<tr class="gem"><td>Gemiddelde p.p.</td><td class="r"></td><td class="r kol-sort"></td>${cel(dec(g.mee_totaal),g.pct_totaal,true)}${cel(dec(g.mee_p1),g.pct_p1)}${cel(dec(g.mee_p2),g.pct_p2)}${cel(dec(g.mee_odw),g.pct_odw)}${cel(dec(g.mee_overig),g.pct_overig)}</tr>`:"");
+    const C1 = [
+      l=>`<td><span class="nm">${l.naam}</span></td>`,
+      l=>urenCell(`${fmtN(l.uren_totaal)}<span class="eh">u</span>`, K1==='uren_totaal'),
+      l=>urenCell(`<b>${fmtN(l.uren_odw)}<span class="eh">u</span></b><span class="pct">${l.pct_uren_odw}%</span>`, K1==='uren_odw'),
+      l=>meeCell(l.mee_totaal,l.pct_mee_totaal,{sep:true,act:K1==='mee_totaal'}),
+      l=>meeCell(l.mee_p1,l.pct_mee_p1,{act:K1==='mee_p1'}),
+      l=>meeCell(l.mee_p2,l.pct_mee_p2,{act:K1==='mee_p2'}),
+      l=>meeCell(l.mee_odw,l.pct_mee_odw,{act:K1==='mee_odw'}),
+      l=>meeCell(l.mee_overig,l.pct_mee_overig,{bg:bgOverig(l),act:K1==='mee_overig'}),
+    ];
+    const rijen = beschSorteer(beschFilterLeden(B.leden), beschSort.t1).map(l=>`<tr>${C1.map(f=>f(l)).join("")}</tr>`).join("");
+    const kl = k => K1===k ? ' kol-sort' : '';
+    const tot = `<tr class="totaal"><td><b>Totaal ploeg</b></td>${urenCell(`${fmtN(m.ploeg_uren_totaal)}<span class="eh">u</span>`,K1==='uren_totaal')}${urenCell(`<b>${fmtN(m.ploeg_uren_odw)}<span class="eh">u</span></b><span class="pct">${m.ploeg_pct_odw}%</span>`,K1==='uren_odw')}<td class="r sep${kl('mee_totaal')}"></td><td class="r${kl('mee_p1')}"></td><td class="r${kl('mee_p2')}"></td><td class="r${kl('mee_odw')}"></td><td class="r${kl('mee_overig')}"></td></tr>`;
+    const gem = g?`<tr class="gem"><td>Gemiddelde p.p.</td>${urenCell('',K1==='uren_totaal')}${urenCell('',K1==='uren_odw')}${meeCell(dec(g.mee_totaal),g.pct_totaal,{sep:true,act:K1==='mee_totaal'})}${meeCell(dec(g.mee_p1),g.pct_p1,{act:K1==='mee_p1'})}${meeCell(dec(g.mee_p2),g.pct_p2,{act:K1==='mee_p2'})}${meeCell(dec(g.mee_odw),g.pct_odw,{act:K1==='mee_odw'})}${meeCell(dec(g.mee_overig),g.pct_overig,{act:K1==='mee_overig'})}</tr>`:"";
+    body.innerHTML = rijen + tot + gem;
   }
 
+  const K2 = beschSort.t2.key;
   const kb = $("#besch-kruis-body");
   if(kb && B.leden[0] && B.leden[0].odw_p1!=null){
-    kb.innerHTML = B.leden.map(l=>`<tr>
-        <td><span class="nm">${l.naam}</span></td>
-        ${cel(l.odw_p1,l.pct_odw_p1)}${cel(l.odw_p2,l.pct_odw_p2)}${celC(l.overig_p1,l.pct_overig_p1,bgOverig(l),true)}${celC(l.overig_p2,l.pct_overig_p2,bgOverig(l))}
-      </tr>`).join("")
-      + (g?`<tr class="gem"><td>Gemiddelde p.p.</td>${cel(dec(g.odw_p1),g.pct_odw_p1)}${cel(dec(g.odw_p2),g.pct_odw_p2)}${cel(dec(g.overig_p1),g.pct_overig_p1,true)}${cel(dec(g.overig_p2),g.pct_overig_p2)}</tr>`:"");
+    const C2 = [
+      l=>`<td><span class="nm">${l.naam}</span></td>`,
+      l=>meeCell(l.odw_p1,l.pct_odw_p1,{act:K2==='odw_p1'}),
+      l=>meeCell(l.odw_p2,l.pct_odw_p2,{act:K2==='odw_p2'}),
+      l=>meeCell(l.overig_p1,l.pct_overig_p1,{sep:true,bg:bgOverig(l),act:K2==='overig_p1'}),
+      l=>meeCell(l.overig_p2,l.pct_overig_p2,{bg:bgOverig(l),act:K2==='overig_p2'}),
+    ];
+    const rijen = beschSorteer(beschFilterLeden(B.leden), beschSort.t2).map(l=>`<tr>${C2.map(f=>f(l)).join("")}</tr>`).join("");
+    const gem = g?`<tr class="gem"><td>Gemiddelde p.p.</td>${meeCell(dec(g.odw_p1),g.pct_odw_p1,{act:K2==='odw_p1'})}${meeCell(dec(g.odw_p2),g.pct_odw_p2,{act:K2==='odw_p2'})}${meeCell(dec(g.overig_p1),g.pct_overig_p1,{sep:true,act:K2==='overig_p1'})}${meeCell(dec(g.overig_p2),g.pct_overig_p2,{act:K2==='overig_p2'})}</tr>`:"";
+    kb.innerHTML = rijen + gem;
   }
+
+  beschWireKoppen();
+  beschUpdateKoppen();
 }
 
 function renderSterkte(){
@@ -216,7 +294,23 @@ function widgets(){
   }
   if(B&&B.dekking_per_rol&&B.dekking_per_rol.length){
     const _r=B.dekking_per_rol,_mn=Math.min(..._r.map(x=>x.pct)),_mx=Math.max(..._r.map(x=>x.pct));
-    balken("perRol",_r.map(r=>[r.label,r.pct]),{smalIndex:(_mn<_mx?0:-1),suffix:"%"});
+    const _minIdx=_r.reduce((mi,x,i,a)=> x.pct<a[mi].pct?i:mi, 0);
+    balken("perRol",_r.map(r=>[r.label,r.pct]),{smalIndex:(_mn<_mx?_minIdx:-1),suffix:"%"});
+    // Conclusie onderaan: welke functie(s) komen de komende periode te kort (halen niet altijd de ondergrens).
+    const slot=$("#rol-tekort");
+    if(slot){
+      const kort=_r.filter(r=>r.pct<100).slice().sort((a,b)=>a.pct-b.pct);
+      slot.hidden=false;
+      if(!kort.length){
+        slot.className="paraat-slot ok";
+        slot.innerHTML=`<b>Geen knelpunt.</b> Elke functie haalt de komende periode steeds de ondergrens.`;
+      }else{
+        const smal=kort[0], rest=kort.slice(1);
+        slot.className="paraat-slot tekort";
+        slot.innerHTML=`<b>Smalste schakel: ${smal.label}</b> — haalt de ondergrens maar ${smal.pct}% van de tijd`
+          + (rest.length?`. Ook krap: ${rest.map(r=>`${r.label} (${r.pct}%)`).join(", ")}.`:`.`);
+      }
+    }
   }
   if(D.dagdeel) balken("dagdeel",D.dagdeel);
   if(D.prioriteit) balken("prioriteit",D.prioriteit);
@@ -236,6 +330,7 @@ function grafJaar(){
   const svg=$("#grafJaar"); if(!svg||!D.uitrukken_per_jaar) return; svg.innerHTML="";
   const W=svg.clientWidth||400,H=220,m={t:16,r:8,b:28,l:28};
   const J=D.uitrukken_per_jaar, max=Math.max(4,Math.ceil(Math.max(...J.map(x=>x[1]))/10)*10);
+  const nuMnd = MND[new Date().getMonth()];
   for(let v=0;v<=max;v+=max/4){ const y=m.t+(H-m.t-m.b)*(1-v/max);
     el("line",{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:v===0?"#D6D3CD":"#EEF0F0"},svg);
     el("text",{x:m.l-8,y:y+4,"text-anchor":"end"},svg).textContent=Math.round(v); }
@@ -243,8 +338,8 @@ function grafJaar(){
   J.forEach(([jr,n],i)=>{ const w=Math.min(70,bw*0.5), x=m.l+bw*i+(bw-w)/2, huidig=i===J.length-1;
     const r=el("rect",{x,y:y(n),width:w,height:y(0)-y(n),rx:3,fill:huidig?"var(--red-accessible)":"var(--ink)"},svg);
     el("text",{x:x+w/2,y:y(n)-8,"text-anchor":"middle",style:"fill:var(--ink);font-weight:700;font-family:var(--font-display);font-size:16px"},svg).textContent=n;
-    el("text",{x:x+w/2,y:H-8,"text-anchor":"middle",style:huidig?"fill:var(--red-accessible);font-weight:600":""},svg).textContent=jr+(huidig?" · t/m okt":"");
-    r.addEventListener("mousemove",e=>toonTip(e,jr+": "+n+" uitrukken"+(huidig?" (t/m oktober)":""))); r.addEventListener("mouseleave",verberg); });
+    el("text",{x:x+w/2,y:H-8,"text-anchor":"middle",style:huidig?"fill:var(--red-accessible);font-weight:600":""},svg).textContent=jr+(huidig?" · t/m "+nuMnd:"");
+    r.addEventListener("mousemove",e=>toonTip(e,jr+": "+n+" uitrukken"+(huidig?" (t/m "+nuMnd+")":""))); r.addEventListener("mouseleave",verberg); });
 }
 function assen(svg,W,H,m,max,stap,fmt){
   for(let v=0;v<=max;v+=stap){ const y=m.t+(H-m.t-m.b)*(1-v/max);
@@ -368,5 +463,5 @@ function renderMijn(rows, corr){
     </tr>`; }).join("");
 }
 
-window.NBLDash = { teken, tekenGrafieken, renderMijn };
+window.NBLDash = { teken, tekenGrafieken, renderMijn, renderBeschikbaarheid };
 })();

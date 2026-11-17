@@ -175,14 +175,28 @@ async function laadAggregaten(){
       const perNaam = {}; for(const l of a.leden) perNaam[l.naam] = l;
       const velden = ['mee_totaal','pct_mee_totaal','mee_p1','pct_mee_p1','mee_p2','pct_mee_p2','mee_odw','pct_mee_odw','mee_overig','pct_mee_overig','odw_p1','pct_odw_p1','odw_p2','pct_odw_p2','overig_p1','pct_overig_p1','overig_p2','pct_overig_p2'];
       for(const l of (B.leden||[])){ const u = perNaam[l.naam]; if(u) for(const v of velden) l[v] = u[v]; }
-      if(B.meta && a.meta){ for(const k of ['n_uitrukken','n_prio1','n_prio2','n_odw','n_overig','n_odw_p1','n_odw_p2','n_overig_p1','n_overig_p2']) if(a.meta[k]!=null) B.meta[k] = a.meta[k];
+      if(B.meta && a.meta){ for(const k of ['n_uitrukken','n_prio1','n_prio2','n_odw','n_overig','n_odw_p1','n_odw_p2','n_overig_p1','n_overig_p2','pct_odw']) if(a.meta[k]!=null) B.meta[k] = a.meta[k];
+        if(a.meta.periode_start) B.meta.periode_start = a.meta.periode_start;
+        if(a.meta.periode_eind) B.meta.periode_eind = a.meta.periode_eind;
         if(a.meta.gem) B.meta.gem = a.meta.gem; }
     }
-    // Overzicht/Uitrukken: ploegtellingen overschrijven.
+    // Overzicht/Uitrukken: ploegtellingen + alle uitruk-widgets live overschrijven.
     if(D && a.ploeg){
-      if(a.ploeg.per_maand && D.uitrukken_per_maand) D.uitrukken_per_maand.dit_jaar = a.ploeg.per_maand.map(x=>x===0?null:x);
-      if(a.ploeg.prioriteit) D.prioriteit = a.ploeg.prioriteit;
-      if(a.ploeg.dagdeel) D.dagdeel = a.ploeg.dagdeel;
+      const P = a.ploeg;
+      if(P.per_maand && D.uitrukken_per_maand) D.uitrukken_per_maand.dit_jaar = P.per_maand.map(x=>x===0?null:x);
+      if(P.prioriteit) D.prioriteit = P.prioriteit;
+      if(P.dagdeel) D.dagdeel = P.dagdeel;
+      if(P.uitruktijd_per_maand) D.uitruktijd_per_maand = P.uitruktijd_per_maand;
+      if(P.uitruktijd_spreiding) D.uitruktijd_spreiding = P.uitruktijd_spreiding;
+      if(P.opkomst) D.opkomst = P.opkomst;
+      if(P.meldingstypen) D.meldingstypen = P.meldingstypen;
+      if(P.recente_uitrukken) D.recente_uitrukken = P.recente_uitrukken;
+      // Meerjaren: alleen het lopende jaar live bijwerken; de historie blijft staan.
+      if(P.jaar_huidig!=null && Array.isArray(D.uitrukken_per_jaar)){
+        const jr = (a.jaar!=null?a.jaar:new Date().getFullYear());
+        const rij = D.uitrukken_per_jaar.find(x=>x[0]===jr);
+        if(rij) rij[1] = P.jaar_huidig; else D.uitrukken_per_jaar.push([jr, P.jaar_huidig]);
+      }
     }
   }catch(e){ /* statische cijfers blijven staan */ }
 }
@@ -653,6 +667,9 @@ bind('#vpimport-start', 'click', async () => {
     melding('#vpimport-melding', `${okInc} incidenten en ${okOpk} opkomst-regels verwerkt. Cijfers worden herberekend…`);
     try { await supabase.functions.invoke('uitruk_aggregaten'); } catch(e) { /* best-effort */ }
     await laadAggregaten();
+    // Alle zichtbare tabbladen opnieuw tekenen zodat de nieuwe cijfers meteen doorkomen
+    // (zonder dat de gebruiker hoeft te herladen of van tab te wisselen).
+    try { if(window.NBLDash){ window.NBLDash.teken(); window.NBLDash.tekenGrafieken(); if(window.NBLDash.renderBeschikbaarheid) window.NBLDash.renderBeschikbaarheid(); } } catch(e){}
     await laadUitrukken();
     laadMijnUitrukken();
     melding('#vpimport-melding', `Klaar — ${okInc} incidenten, ${okOpk} opkomst-regels${gekoppeld ? `, ${gekoppeld} lid${gekoppeld>1?'eren':''} gekoppeld` : ''}. De cijfers zijn bijgewerkt.`, 'ok');
