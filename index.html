@@ -138,11 +138,11 @@
                 <tr>
                   <th class="r sortbaar" data-k="uren_totaal">Uren<span>totaal</span></th>
                   <th class="r sortbaar" data-k="uren_odw">Overdag<span>werkdag</span></th>
-                  <th class="r sep sortbaar" data-k="mee_totaal">Totaal<span>van 57</span></th>
-                  <th class="r sortbaar" data-k="mee_p1">Prio 1<span>van 29</span></th>
-                  <th class="r sortbaar" data-k="mee_p2">Prio 2<span>van 28</span></th>
-                  <th class="r sortbaar" data-k="mee_odw">Overdag<span>van 25</span></th>
-                  <th class="r sortbaar" data-k="mee_overig">Overig<span>van 32</span></th>
+                  <th class="r sep sortbaar" data-k="mee_totaal">Totaal<span data-noemer="n_uitrukken">van 57</span></th>
+                  <th class="r sortbaar" data-k="mee_p1">Prio 1<span data-noemer="n_prio1">van 29</span></th>
+                  <th class="r sortbaar" data-k="mee_p2">Prio 2<span data-noemer="n_prio2">van 28</span></th>
+                  <th class="r sortbaar" data-k="mee_odw">Overdag<span data-noemer="n_odw">van 25</span></th>
+                  <th class="r sortbaar" data-k="mee_overig">Overig<span data-noemer="n_overig">van 32</span></th>
                 </tr>
               </thead>
               <tbody id="besch-body"></tbody>
@@ -167,14 +167,14 @@
               <thead>
                 <tr class="grp">
                   <th rowspan="2" class="sortbaar" data-k="naam">Naam</th>
-                  <th colspan="2">Overdag werkdag <span class="van">(van 25)</span></th>
-                  <th colspan="2" class="grp-mee">Overig <span class="van">(van 32)</span></th>
+                  <th colspan="2">Overdag werkdag <span class="van" data-noemer="n_odw" data-paren="1">(van 25)</span></th>
+                  <th colspan="2" class="grp-mee">Overig <span class="van" data-noemer="n_overig" data-paren="1">(van 32)</span></th>
                 </tr>
                 <tr>
-                  <th class="r sortbaar" data-k="odw_p1">Prio 1<span>van 17</span></th>
-                  <th class="r sortbaar" data-k="odw_p2">Prio 2<span>van 8</span></th>
-                  <th class="r sep sortbaar" data-k="overig_p1">Prio 1<span>van 12</span></th>
-                  <th class="r sortbaar" data-k="overig_p2">Prio 2<span>van 20</span></th>
+                  <th class="r sortbaar" data-k="odw_p1">Prio 1<span data-noemer="n_odw_p1">van 17</span></th>
+                  <th class="r sortbaar" data-k="odw_p2">Prio 2<span data-noemer="n_odw_p2">van 8</span></th>
+                  <th class="r sep sortbaar" data-k="overig_p1">Prio 1<span data-noemer="n_overig_p1">van 12</span></th>
+                  <th class="r sortbaar" data-k="overig_p2">Prio 2<span data-noemer="n_overig_p2">van 20</span></th>
                 </tr>
               </thead>
               <tbody id="besch-kruis-body"></tbody>
