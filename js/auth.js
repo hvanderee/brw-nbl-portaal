@@ -602,6 +602,67 @@ async function verwijderVerb(id){
   await laadUitrukken(); ververAggregaten();
 }
 
+/* ============ VP-import (beheerder uploadt sync-bestand) ============ */
+let vpImportData = null;
+bind('#vpimport-file', 'change', e => {
+  const f = e.target.files && e.target.files[0];
+  vpImportData = null;
+  $('#vpimport-start').disabled = true;
+  $('#vpimport-bron').textContent = '';
+  melding('#vpimport-melding', '');
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      const inc = Array.isArray(d.incidenten) ? d.incidenten : [];
+      const opk = Array.isArray(d.opkomst) ? d.opkomst : [];
+      if(!inc.length){ melding('#vpimport-melding', 'Geen incidenten in dit bestand gevonden.', 'fout'); return; }
+      vpImportData = { inc, opk };
+      $('#vpimport-bron').textContent = `${inc.length} incidenten · ${opk.length} opkomst-regels`;
+      $('#vpimport-start').disabled = false;
+      melding('#vpimport-melding', 'Klaar om te importeren. Klik op “Importeren”.');
+    } catch(err) {
+      melding('#vpimport-melding', 'Kon het bestand niet lezen (geen geldige JSON).', 'fout');
+    }
+  };
+  reader.readAsText(f);
+});
+
+bind('#vpimport-start', 'click', async () => {
+  if(!vpImportData) return;
+  const { inc, opk } = vpImportData;
+  const btn = $('#vpimport-start'), fileInp = $('#vpimport-file');
+  btn.disabled = true; fileInp.disabled = true;
+  let okInc = 0, okOpk = 0, gekoppeld = 0;
+  const CH = 15;
+  try {
+    for(let i = 0; i < inc.length; i += CH){
+      const chunk = inc.slice(i, i + CH);
+      const ids = new Set(chunk.map(x => x.gebeurtenis_id));
+      const opkChunk = opk.filter(x => ids.has(x.gebeurtenis_id));
+      melding('#vpimport-melding', `Bezig… ${Math.min(i + CH, inc.length)}/${inc.length} incidenten verstuurd.`);
+      const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'vp_import', incidenten: chunk, opkomst: opkChunk } });
+      if(error || !data || !data.ok){
+        melding('#vpimport-melding', (data && (data.error || ('Fout bij ' + (data.stap||'import')))) || vertaalFout((error && error.message) || 'Importeren mislukt.'), 'fout');
+        btn.disabled = false; fileInp.disabled = false; return;
+      }
+      okInc += data.incidenten || 0; okOpk += data.opkomst || 0; gekoppeld += data.leden_gekoppeld || 0;
+    }
+    // Alles opnieuw laten optellen en de schermen verversen
+    melding('#vpimport-melding', `${okInc} incidenten en ${okOpk} opkomst-regels verwerkt. Cijfers worden herberekend…`);
+    try { await supabase.functions.invoke('uitruk_aggregaten'); } catch(e) { /* best-effort */ }
+    await laadAggregaten();
+    await laadUitrukken();
+    laadMijnUitrukken();
+    melding('#vpimport-melding', `Klaar — ${okInc} incidenten, ${okOpk} opkomst-regels${gekoppeld ? `, ${gekoppeld} lid${gekoppeld>1?'eren':''} gekoppeld` : ''}. De cijfers zijn bijgewerkt.`, 'ok');
+    vpImportData = null; fileInp.value = ''; fileInp.disabled = false;
+  } catch(err) {
+    melding('#vpimport-melding', 'Er ging iets mis tijdens het importeren: ' + (err && err.message || err), 'fout');
+    btn.disabled = false; fileInp.disabled = false;
+  }
+});
+
 /* ============ OPSTART ============ */
 if(herstelModus){
   toon('#auth'); kaart('c-nieuw');
