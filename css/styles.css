@@ -272,10 +272,24 @@ td .em{color:var(--slate);font-size:13px}
 
 /* beschikbaarheidstabel */
 #besch-meta{font-size:13px;color:var(--slate);margin-top:-6px;margin-bottom:16px}
+.besch-filter{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:-4px 0 18px}
+.besch-zoek{position:relative;flex:1;min-width:220px;max-width:420px}
+.besch-zoek .zoek-icoon{position:absolute;left:13px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--dim);pointer-events:none}
+.besch-zoek input{width:100%;height:42px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);padding:0 14px 0 38px;font-size:14px;color:var(--ink);transition:border-color .15s,background .15s,box-shadow .15s}
+.besch-zoek input::placeholder{color:var(--dim)}
+.besch-zoek input:focus{border-color:var(--ink);background:var(--white);outline:none;box-shadow:0 0 0 3px rgba(17,24,32,.06)}
+.besch-filter .knop-primair{height:42px;padding:0 20px;border:0;border-radius:10px;background:var(--ink);color:var(--white);font-weight:600;font-size:14px;cursor:pointer;transition:opacity .15s}
+.besch-filter .knop-primair:hover{opacity:.85}
+.besch-filter .knop-tekst{height:42px;padding:0 12px;border:0;background:none;color:var(--dim);font-size:14px;cursor:pointer;border-radius:8px;transition:color .15s,background .15s}
+.besch-filter .knop-tekst:hover{color:var(--ink);background:var(--surface)}
+@media(max-width:600px){.besch-zoek{max-width:none}.besch-filter{gap:8px}}
 #app table.besch{font-size:14px}
 #app table.besch th,#app table.besch td{white-space:nowrap;padding:13px 16px;font-variant-numeric:tabular-nums}
 #app table.besch th{vertical-align:bottom;line-height:1.25}
 #app table.besch th span{display:block;font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--dim);margin-top:3px}
+#app table.besch th.sortbaar{cursor:pointer;user-select:none;-webkit-user-select:none}
+#app table.besch th.sortbaar:hover{color:var(--ink)}
+#app table.besch th .pijl{display:inline-block;margin-right:4px;font-size:10px;color:var(--red-accessible);vertical-align:1px}
 #app table.besch td.r,#app table.besch th.r{padding-right:16px}
 #app table.besch td .eh{font-size:.8em;color:var(--dim);font-weight:400;margin-left:1px}
 #app table.besch td .pct{color:var(--slate);font-size:.92em;margin-left:7px}
@@ -315,6 +329,12 @@ td .em{color:var(--slate);font-size:13px}
 #dash .schaal{flex-wrap:wrap}
 #dash .schaal .tlegend{display:inline-flex;align-items:center;gap:6px;margin-right:16px;font-size:12px;color:var(--slate)}
 #dash .schaal .tlegend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+/* Paraatheid: conclusieregel 'welke functie te kort' onderaan de pagina */
+#dash .paraat-slot{margin-top:20px;border:1px solid var(--line);border-radius:10px;background:var(--white);padding:15px 20px;font-size:14px;color:var(--slate);line-height:1.5}
+#dash .paraat-slot b{color:var(--ink)}
+#dash .paraat-slot.tekort{border-left:4px solid var(--red-accessible);background:#FDF5F3}
+#dash .paraat-slot.ok{border-left:4px solid var(--groen);background:#F1F8F3}
 
 /* placeholder (Mijn uitrukken) */
 .leeg{text-align:center;color:var(--slate);padding:48px 20px}
