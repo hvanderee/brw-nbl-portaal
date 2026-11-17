@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/styles.css?v=20261118a">
 </head>
 <body>
 
@@ -123,9 +123,12 @@
           <div class="sk"><h2>Beschikbaarheid en uitrukdeelname</h2></div>
           <p id="besch-meta" class="uitleg"></p>
           <div class="besch-filter">
-            <input id="besch-naam" type="text" placeholder="Filter op naam — meerdere met komma's">
-            <button id="besch-filter-aan" class="knop-rand">Toepassen</button>
-            <button id="besch-filter-uit" class="knop-rand">Wissen</button>
+            <div class="besch-zoek">
+              <svg class="zoek-icoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input id="besch-naam" type="text" placeholder="Filter op naam — meerdere met komma's">
+            </div>
+            <button id="besch-filter-aan" class="knop-primair">Toepassen</button>
+            <button id="besch-filter-uit" class="knop-tekst">Wissen</button>
           </div>
           <div class="tabelwrap">
             <table class="besch" id="besch-tabel">
@@ -442,11 +445,11 @@
 
 <div class="tip" id="tip" hidden></div>
 
-<script src="data.js"></script>
-<script src="bezetting.js"></script>
-<script src="beschikbaarheid.js"></script>
-<script src="js/config.js"></script>
-<script src="js/dashboard.js"></script>
-<script type="module" src="js/auth.js"></script>
+<script src="data.js?v=20261118a"></script>
+<script src="bezetting.js?v=20261118a"></script>
+<script src="beschikbaarheid.js?v=20261118a"></script>
+<script src="js/config.js?v=20261118a"></script>
+<script src="js/dashboard.js?v=20261118a"></script>
+<script type="module" src="js/auth.js?v=20261118a"></script>
 </body>
 </html>
