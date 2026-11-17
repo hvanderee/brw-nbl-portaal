@@ -186,11 +186,14 @@ async function laadAggregaten(){
       if(P.per_maand && D.uitrukken_per_maand) D.uitrukken_per_maand.dit_jaar = P.per_maand.map(x=>x===0?null:x);
       if(P.prioriteit) D.prioriteit = P.prioriteit;
       if(P.dagdeel) D.dagdeel = P.dagdeel;
-      if(P.uitruktijd_per_maand) D.uitruktijd_per_maand = P.uitruktijd_per_maand;
-      if(P.uitruktijd_spreiding) D.uitruktijd_spreiding = P.uitruktijd_spreiding;
-      if(P.opkomst) D.opkomst = P.opkomst;
-      if(P.meldingstypen) D.meldingstypen = P.meldingstypen;
-      if(P.recente_uitrukken) D.recente_uitrukken = P.recente_uitrukken;
+      // Alleen overschrijven als de live-data ÉCHT gevuld is — anders blijven de (goede) statische
+      // A3-cijfers staan. Zo maakt een nog niet gesyncte uitruktijd (allemaal null) de grafieken niet leeg.
+      if(P.uitruktijd_per_maand && P.uitruktijd_per_maand.some(v=>v!=null)) D.uitruktijd_per_maand = P.uitruktijd_per_maand;
+      if(P.uitruktijd_spreiding && P.uitruktijd_spreiding.n) D.uitruktijd_spreiding = P.uitruktijd_spreiding;
+      if(P.opkomst && P.opkomst.verdeling && P.opkomst.verdeling.length) D.opkomst = P.opkomst;
+      if(P.meldingstypen && P.meldingstypen.length) D.meldingstypen = P.meldingstypen;
+      // Recente uitrukken pas live tonen zodra er echte uitruktijden in zitten (niet allemaal "–").
+      if(P.recente_uitrukken && P.recente_uitrukken.length && P.recente_uitrukken.some(r=>r[4] && r[4]!=='–')) D.recente_uitrukken = P.recente_uitrukken;
       // Meerjaren: alleen het lopende jaar live bijwerken; de historie blijft staan.
       if(P.jaar_huidig!=null && Array.isArray(D.uitrukken_per_jaar)){
         const jr = (a.jaar!=null?a.jaar:new Date().getFullYear());
