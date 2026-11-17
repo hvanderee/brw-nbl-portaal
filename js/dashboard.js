@@ -176,6 +176,11 @@ function beschUpdateKoppen(){
 function renderBeschikbaarheid(){
   const B = window.NBL_BESCHIKBAARHEID; if(!B) return;
   const m = B.meta, g = m.gem, mt = $("#besch-meta");
+  // Kolomnoemers ("van N") live uit de meta zetten i.p.v. de hardcoded HTML-waarden.
+  document.querySelectorAll('[data-noemer]').forEach(sp=>{
+    const v = m[sp.dataset.noemer];
+    if(v!=null) sp.textContent = sp.dataset.paren ? `(van ${v})` : `van ${v}`;
+  });
   if(mt) mt.textContent = `Periode ${nlDat(m.periode_start)} t/m ${nlDat(m.periode_eind)} · ${m.n_uitrukken} uitrukken (${m.n_prio1}× P1, ${m.n_prio2}× P2), waarvan ${m.n_odw} overdag op een werkdag (${m.pct_odw}%) · beschikbare uren rechtstreeks uit Pre-Com, 1× per dag bijgewerkt${m.uren_bijgewerkt?` (${nlDatTijd(m.uren_bijgewerkt)})`:""} · uitrukken uit de opkomstdatabase`;
   const dec = n => Number(n).toLocaleString('nl-NL');
   // Kleur Overig-kolommen naar afwijking t.o.v. het gemiddelde.
