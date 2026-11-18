@@ -329,7 +329,24 @@ function widgets(){
       box.innerHTML=`<div class="duo" style="margin-bottom:16px"><div class="tegel"><div class="nm">Helft binnen (mediaan)</div><div class="vl">${sp.mediaan_tekst}</div></div><div class="tegel"><div class="nm">9 op 10 binnen (p90)</div><div class="vl">${sp.p90_tekst}</div></div></div>`
         +`<p class="uitleg" style="margin:0 0 8px">Verdeling van ${sp.n} uitrukken · ${sp.binnen_streef_pct}% binnen de streefwaarde (${fmtMin(sp.streef)})</p>`
         +sp.histogram.map(([k,v])=>{ const goed=k==="< 4 min"; return `<div class="type"><div class="rij"><span>${k}</span><b>${v}×</b></div><div class="balk"><i style="width:${Math.max(2,v/mx*100)}%${goed?';background:var(--ink)':''}"></i></div></div>`; }).join(""); } }
+  renderVoertuig();
   renderPlaatsen();
+}
+
+// Aantal uitrukken per voertuig, als verdeling die optelt tot het totaal: alleen TS, alleen VEB,
+// of beide samen. Afgeleid uit de plaatsen-data.
+function renderVoertuig(){
+  const box=$("#voertuig"); if(!box) return;
+  const P=(D && D.plaatsen) || [];
+  const tsOnly=P.reduce((a,p)=>a+p.ts,0);
+  const vebOnly=P.reduce((a,p)=>a+p.veb,0);
+  const combi=P.reduce((a,p)=>a+(p.combi||0),0);
+  const tot=tsOnly+vebOnly+combi;
+  if(!tot){ box.innerHTML='<p class="geen">Nog geen gegevens.</p>'; return; }
+  const mx=Math.max(tsOnly,vebOnly,combi)||1;
+  const rij=(nm,n,c)=> n ? `<div class="type"><div class="rij"><span>${nm}</span><b>${n}×</b></div><div class="balk"><i style="width:${Math.max(2,n/mx*100)}%;background:${c}"></i></div></div>` : '';
+  box.innerHTML=rij('Alleen TS (5231)',tsOnly,'var(--ink)')+rij('Alleen VEB (5221)',vebOnly,'var(--red-accessible)')+rij('TS + VEB samen',combi,'var(--gold)')
+    +`<p class="uitleg" style="margin:10px 0 0">Samen <b>${tot}</b> uitrukken.</p>`;
 }
 
 // #3 — Uitrukken naar plaats, gesplitst TS (donker) / VEB (accent).
