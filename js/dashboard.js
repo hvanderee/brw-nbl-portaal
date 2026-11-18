@@ -329,6 +329,25 @@ function widgets(){
       box.innerHTML=`<div class="duo" style="margin-bottom:16px"><div class="tegel"><div class="nm">Helft binnen (mediaan)</div><div class="vl">${sp.mediaan_tekst}</div></div><div class="tegel"><div class="nm">9 op 10 binnen (p90)</div><div class="vl">${sp.p90_tekst}</div></div></div>`
         +`<p class="uitleg" style="margin:0 0 8px">Verdeling van ${sp.n} uitrukken · ${sp.binnen_streef_pct}% binnen de streefwaarde (${fmtMin(sp.streef)})</p>`
         +sp.histogram.map(([k,v])=>{ const goed=k==="< 4 min"; return `<div class="type"><div class="rij"><span>${k}</span><b>${v}×</b></div><div class="balk"><i style="width:${Math.max(2,v/mx*100)}%${goed?';background:var(--ink)':''}"></i></div></div>`; }).join(""); } }
+  renderPlaatsen();
+}
+
+// #3 — Uitrukken naar plaats, gesplitst TS (donker) / VEB (accent).
+function renderPlaatsen(){
+  const box=$("#plaatsen"); if(!box) return;
+  const P=(D && D.plaatsen) || [];
+  if(!P.length){ box.innerHTML='<p class="geen">Nog geen plaatsgegevens beschikbaar.</p>'; return; }
+  const top=P.slice(0,12), mx=Math.max(...top.map(p=>p.totaal))||1;
+  const chip=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:11px;height:11px;border-radius:3px;background:${c};display:inline-block"></i>${t}</span>`;
+  const leg=`<div style="display:flex;gap:18px;font-size:12px;color:var(--slate);margin:0 0 12px">${chip('var(--ink)','TS (5231)')}${chip('var(--red-accessible)','VEB (5221)')}</div>`;
+  box.innerHTML=leg+top.map(p=>{
+    const tsW=p.ts/mx*100, vebW=p.veb/mx*100;
+    const sub=[]; if(p.ts) sub.push(`TS ${p.ts}×`); if(p.veb) sub.push(`VEB ${p.veb}×`);
+    return `<div class="type"><div class="rij"><span>${esc(p.plaats)}</span><b>${p.totaal}×</b></div>`
+      +`<div style="display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--line);margin:5px 0 3px">`
+      +`<div style="width:${tsW}%;background:var(--ink)"></div><div style="width:${vebW}%;background:var(--red-accessible)"></div></div>`
+      +`<div style="font-size:12px;color:var(--slate)">${sub.join('  ·  ')}</div></div>`;
+  }).join("");
 }
 
 function grafJaar(){
