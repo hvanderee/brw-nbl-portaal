@@ -338,14 +338,17 @@ function renderPlaatsen(){
   const P=(D && D.plaatsen) || [];
   if(!P.length){ box.innerHTML='<p class="geen">Nog geen plaatsgegevens beschikbaar.</p>'; return; }
   const top=P.slice(0,12), mx=Math.max(...top.map(p=>p.totaal))||1;
+  const CTS='var(--ink)', CVEB='var(--red-accessible)', CCOMBI='var(--gold)';
   const chip=(c,t)=>`<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:11px;height:11px;border-radius:3px;background:${c};display:inline-block"></i>${t}</span>`;
-  const leg=`<div style="display:flex;gap:18px;font-size:12px;color:var(--slate);margin:0 0 12px">${chip('var(--ink)','TS (5231)')}${chip('var(--red-accessible)','VEB (5221)')}</div>`;
+  const heeftCombi=top.some(p=>p.combi);
+  const leg=`<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--slate);margin:0 0 12px">${chip(CTS,'TS (5231)')}${chip(CVEB,'VEB (5221)')}${heeftCombi?chip(CCOMBI,'TS + VEB'):''}</div>`;
   box.innerHTML=leg+top.map(p=>{
-    const tsW=p.ts/mx*100, vebW=p.veb/mx*100;
-    const sub=[]; if(p.ts) sub.push(`TS ${p.ts}×`); if(p.veb) sub.push(`VEB ${p.veb}×`);
+    const combi=p.combi||0;
+    const seg=(w,c)=>w?`<div style="width:${w/mx*100}%;background:${c}"></div>`:'';
+    const sub=[]; if(p.ts) sub.push(`TS ${p.ts}×`); if(p.veb) sub.push(`VEB ${p.veb}×`); if(combi) sub.push(`TS + VEB ${combi}×`);
     return `<div class="type"><div class="rij"><span>${esc(p.plaats)}</span><b>${p.totaal}×</b></div>`
       +`<div style="display:flex;height:9px;border-radius:5px;overflow:hidden;background:var(--line);margin:5px 0 3px">`
-      +`<div style="width:${tsW}%;background:var(--ink)"></div><div style="width:${vebW}%;background:var(--red-accessible)"></div></div>`
+      +seg(p.ts,CTS)+seg(p.veb,CVEB)+seg(combi,CCOMBI)+`</div>`
       +`<div style="font-size:12px;color:var(--slate)">${sub.join('  ·  ')}</div></div>`;
   }).join("");
 }
