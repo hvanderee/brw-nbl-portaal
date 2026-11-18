@@ -194,11 +194,20 @@ async function laadAggregaten(){
       if(P.meldingstypen && P.meldingstypen.length) D.meldingstypen = P.meldingstypen;
       // Recente uitrukken pas live tonen zodra er echte uitruktijden in zitten (niet allemaal "–").
       if(P.recente_uitrukken && P.recente_uitrukken.length && P.recente_uitrukken.some(r=>r[4] && r[4]!=='–')) D.recente_uitrukken = P.recente_uitrukken;
-      // Meerjaren: alleen het lopende jaar live bijwerken; de historie blijft staan.
-      if(P.jaar_huidig!=null && Array.isArray(D.uitrukken_per_jaar)){
-        const jr = (a.jaar!=null?a.jaar:new Date().getFullYear());
-        const rij = D.uitrukken_per_jaar.find(x=>x[0]===jr);
-        if(rij) rij[1] = P.jaar_huidig; else D.uitrukken_per_jaar.push([jr, P.jaar_huidig]);
+      // #3: plaatsen (TS/VEB) live.
+      if(P.plaatsen && P.plaatsen.length) D.plaatsen = P.plaatsen;
+      const jrNu = (a.jaar!=null?a.jaar:new Date().getFullYear());
+      // Vergelijkingsjaar: zodra het vorige jaar in VP staat (rollover per 1 jan), komt de maand-
+      // vergelijking live; anders blijft de statische historie staan.
+      if(P.vorig_per_maand && P.vorig_per_maand.some(v=>v) && D.uitrukken_per_maand){
+        D.uitrukken_per_maand.vorig_jaar = P.vorig_per_maand;
+      }
+      // Meerjaren: lopend jaar live; vorig jaar bevriezen op zijn live-eindstand zodra beschikbaar.
+      if(Array.isArray(D.uitrukken_per_jaar)){
+        const zet = (jr, n) => { if(n==null) return; const rij = D.uitrukken_per_jaar.find(x=>x[0]===jr); if(rij) rij[1]=n; else D.uitrukken_per_jaar.push([jr,n]); };
+        if(P.jaar_huidig!=null) zet(jrNu, P.jaar_huidig);
+        if(P.jaar_vorig) zet(jrNu-1, P.jaar_vorig);
+        D.uitrukken_per_jaar.sort((x,y)=>x[0]-y[0]);
       }
     }
   }catch(e){ /* statische cijfers blijven staan */ }
