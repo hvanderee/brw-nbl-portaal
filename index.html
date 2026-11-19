@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=20261118f">
+<link rel="stylesheet" href="css/styles.css?v=20261118g">
 </head>
 <body>
 
@@ -336,17 +336,17 @@
 
       <section class="sectie" id="verb-blok">
         <div class="sk">
-          <h3>Verborgen VP-regels</h3>
+          <h3>VP-correcties</h3>
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
             <span class="telt" id="verb-telt"></span>
-            <button class="knop-klein" id="nieuw-verb">+ VP-regel verbergen</button>
+            <button class="knop-klein" id="nieuw-verb">+ VP-correctie</button>
           </div>
         </div>
-        <p class="uitleg">VP-regels die niet in “Mijn uitrukken” thuishoren (OBL/buurpost of een verkeerde status). Laat eenheid-id leeg om het hele incident te verbergen, of vul het in om alleen die ene voertuig-regel weg te halen.</p>
+        <p class="uitleg">Corrigeer VP-registraties die afwijken van de werkelijkheid: verberg een regel (OBL/buurpost of verkeerde status), of overschrijf de opkomst om iemand van de TS af te halen of juist toe te voegen. Laat eenheid-id leeg voor het hele incident, of vul het in voor één voertuig-regel. Elke correctie werkt door in álle cijfers en grafieken.</p>
         <div class="melding" id="verb-melding" role="status" aria-live="polite"></div>
         <div class="tabelwrap">
           <table class="besch">
-            <thead><tr><th>Ploeglid</th><th>Gebeurtenis-id</th><th>Eenheid-id</th><th></th></tr></thead>
+            <thead><tr><th>Ploeglid</th><th>Gebeurtenis-id</th><th>Eenheid-id</th><th>Correctie</th><th></th></tr></thead>
             <tbody id="verb-body"></tbody>
           </table>
         </div>
@@ -433,8 +433,8 @@
 <!-- Modal: VP-regel verbergen -->
 <div class="overlay" id="overlay-verb" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vm-titel">
-    <h3 id="vm-titel">VP-regel verbergen</h3>
-    <p class="sub">Haal een onterechte VP-regel (OBL/buurpost of verkeerde status) uit “Mijn uitrukken”.</p>
+    <h3 id="vm-titel">VP-correctie</h3>
+    <p class="sub">Corrigeer een VP-registratie: haal iemand van de TS af (buurpost/verkeerde status) of voeg 'm juist toe. Werkt door in álle cijfers en grafieken.</p>
     <form id="f-verb">
       <input type="hidden" id="vm-id">
       <div><label for="vm-lid">Ploeglid</label><select id="vm-lid" required></select></div>
@@ -442,6 +442,12 @@
         <div><label for="vm-gid">Gebeurtenis-id</label><input id="vm-gid" type="text" inputmode="numeric" placeholder="bijv. 66995379"></div>
         <div><label for="vm-eenheid">Eenheid-id (optioneel)</label><input id="vm-eenheid" type="text" inputmode="numeric"></div>
       </div>
+      <div><label for="vm-correctie">Correctie</label><select id="vm-correctie">
+        <option value="">Verbergen — regel telt niet mee</option>
+        <option value="3">Mee op de TS (opkomst 3)</option>
+        <option value="4">Wel opgekomen, niet mee (4)</option>
+        <option value="1">Niet opgekomen (1)</option>
+      </select></div>
       <div class="modal-actie">
         <button type="button" class="knop annuleer" id="vm-annuleer">Annuleren</button>
         <button type="submit" class="knop" id="vm-opslaan">Opslaan</button>
@@ -453,11 +459,11 @@
 
 <div class="tip" id="tip" hidden></div>
 
-<script src="data.js?v=20261118f"></script>
-<script src="bezetting.js?v=20261118f"></script>
-<script src="beschikbaarheid.js?v=20261118f"></script>
-<script src="js/config.js?v=20261118f"></script>
-<script src="js/dashboard.js?v=20261118f"></script>
-<script type="module" src="js/auth.js?v=20261118f"></script>
+<script src="data.js?v=20261118g"></script>
+<script src="bezetting.js?v=20261118g"></script>
+<script src="beschikbaarheid.js?v=20261118g"></script>
+<script src="js/config.js?v=20261118g"></script>
+<script src="js/dashboard.js?v=20261118g"></script>
+<script type="module" src="js/auth.js?v=20261118g"></script>
 </body>
 </html>
