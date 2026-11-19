@@ -383,12 +383,14 @@ function renderPlaatsen(){
 
 function grafJaar(){
   const svg=$("#grafJaar"); if(!svg||!D.uitrukken_per_jaar) return; svg.innerHTML="";
-  const W=svg.clientWidth||400,H=220,m={t:16,r:8,b:28,l:28};
-  const J=D.uitrukken_per_jaar, max=Math.max(4,Math.ceil(Math.max(...J.map(x=>x[1]))/10)*10);
+  const W=svg.clientWidth||400,H=svg.clientHeight||220,m={t:18,r:8,b:28,l:28};
+  // Kop boven de hoogste balk vrijhouden (anders botst het waarde-label tegen de bovenrand) en nette
+  // ronde as-stappen kiezen i.p.v. max/4 (dat gaf rare tussenwaarden).
+  const J=D.uitrukken_per_jaar, dataMax=Math.max(1,...J.map(x=>x[1])), step=dataMax<=40?10:20, max=Math.ceil((dataMax+step*0.6)/step)*step;
   const nuMnd = MND[new Date().getMonth()];
-  for(let v=0;v<=max;v+=max/4){ const y=m.t+(H-m.t-m.b)*(1-v/max);
+  for(let v=0;v<=max;v+=step){ const y=m.t+(H-m.t-m.b)*(1-v/max);
     el("line",{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:v===0?"#D6D3CD":"#EEF0F0"},svg);
-    el("text",{x:m.l-8,y:y+4,"text-anchor":"end"},svg).textContent=Math.round(v); }
+    el("text",{x:m.l-8,y:y+4,"text-anchor":"end"},svg).textContent=v; }
   const bw=(W-m.l-m.r)/J.length, y=v=>m.t+(H-m.t-m.b)*(1-v/max);
   J.forEach(([jr,n],i)=>{ const w=Math.min(70,bw*0.5), x=m.l+bw*i+(bw-w)/2, huidig=i===J.length-1;
     const r=el("rect",{x,y:y(n),width:w,height:y(0)-y(n),rx:3,fill:huidig?"var(--red-accessible)":"var(--ink)"},svg);
