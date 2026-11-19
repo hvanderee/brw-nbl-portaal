@@ -6,8 +6,9 @@ const $ = s => document.querySelector(s);
 const D = window.NBL_DATA;
 const MND = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
 const DAG = ["ma","di","wo","do","vr","za","zo"];
-// Bezettingsgraad — 5 niveaus (rood → donkergroen)
-const TIERKLEUR = ["#CF311B","#E8820E","#86C98E","#2F7D4F","#13482C"];
+// Bezettingsgraad — 5 niveaus (rood → oranje → amber/krap → groen → donkergroen).
+// Krap is géén positieve situatie, dus amber i.p.v. groen: alleen Volwaardig en Volledig zijn groen.
+const TIERKLEUR = ["#CF311B","#E8820E","#D9A50D","#2F7D4F","#13482C"];
 const TIERNAAM  = ["Onvoldoende","Ondergrens · 4","Krap · 5","Volwaardig · 6","Volledig · 6 + aspirant"];
 const TIERKORT  = ["Onvoldoende","Ondergrens","Krap","Volwaardig","Volledig"];
 function _hx(h){ return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); }
