@@ -3,7 +3,7 @@ Haalt de actuele bezetting van post Nieuw-Beijerland op uit Pre-Com
 en schrijft geaggregeerde cijfers (aantallen per functie) naar bezetting.js.
 Daarnaast — met akkoord van de ploeg — de namen van wie op dít moment per functie
 beschikbaar staat ("Status nu"): nu_namen. Geen historie van namen, alleen de actuele stand.
-
+ 
 Inloggegevens komen uit omgevingsvariabelen (in GitHub: Settings > Secrets):
   PRECOM_USER, PRECOM_PASS
 Optioneel: PRECOM_GROUP_ID (standaard 4915), PRECOM_DAGEN (standaard 28)
@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from html.parser import HTMLParser
 import requests
-
+ 
 BASIS = "https://portal.pre-com.nl/PreCom/"
 TZ = ZoneInfo("Europe/Amsterdam")
 GROEP = int(os.environ.get("PRECOM_GROUP_ID", "4915"))
@@ -21,8 +21,8 @@ NODE = os.environ.get("PRECOM_NODE_ID", "2123")      # post Nieuw-Beijerland in 
 MODULE = os.environ.get("PRECOM_MODULE_ID", "79")    # module 'Bezetting'
 DAGEN = int(os.environ.get("PRECOM_DAGEN", "7"))   # heatmap-voorspeller: max een week vooruit
 UIT = os.environ.get("PRECOM_OUTPUT", "bezetting.js")
-
-
+ 
+ 
 class LoginForm(HTMLParser):
     """Verzamelt verborgen velden (zoals een verificatietoken) uit het loginformulier."""
     def __init__(self):
@@ -36,12 +36,12 @@ class LoginForm(HTMLParser):
                 self.velden.setdefault(a["name"], a.get("value", ""))
     def handle_endtag(self, tag):
         if tag == "form": self.in_form = False
-
-
+ 
+ 
 def fout(msg):
     print("FOUT:", msg); sys.exit(1)
-
-
+ 
+ 
 def inloggen(s):
     gebruiker, wachtwoord = os.environ.get("PRECOM_USER"), os.environ.get("PRECOM_PASS")
     if not gebruiker or not wachtwoord:
@@ -67,8 +67,8 @@ def inloggen(s):
         r = s.get(BASIS + pad, headers=xhr, timeout=30)
         if r.status_code >= 400:
             fout(f"Stap {pad.split('?')[0]} gaf HTTP {r.status_code}.")
-
-
+ 
+ 
 def bezetting(s, datums):
     data = [("groupId", str(GROEP))] + [("selectedDates[]", d.strftime("%Y-%m-%d")) for d in datums]
     r = s.post(BASIS + "Occupancy/GetOccupancy", data=data, timeout=60,
@@ -79,19 +79,19 @@ def bezetting(s, datums):
     if "json" not in r.headers.get("Content-Type", ""):
         fout("Geen JSON terug van Pre-Com (sessie verlopen of geen rechten op deze groep?).")
     return r.json()
-
-
+ 
+ 
 def slot_index(k):
     k = k.rjust(4, "0"); return int(k[:2]) * 4 + int(k[2:]) // 15
-
-
+ 
+ 
 # DetailsOccupancy is HTML met per functie (<li class="staffing-item" data-function-id=..>) een
 # lijst roosterleden (<ul class='stuff'> met per lid een <li>). Per lid markeren
 # .marked-line.red/.orange de vensters (left%/width%) waarin iemand afgemeld staat. Iemand telt NU
 # als beschikbaar wanneer de huidige tijd (now_pct, % van het etmaal) in géén van die vensters valt.
 # Dit reproduceert exact de tellingen uit AvailablePeople/DayCounters en levert de namen erbij.
 _DETAIL_FUNCS = {1: "Bevelvoerder", 333: "Chauffeur TS", 219: "Manschap", 100: "Asp. Manschap"}
-
+ 
 def parse_namen_nu(html, now_pct):
     out = {}
     if not html:
@@ -128,13 +128,13 @@ def parse_namen_nu(html, now_pct):
                 namen.append(re.sub(r"\s+", " ", naam).strip())
         out[label] = namen
     return out
-
-
+ 
+ 
 def main():
     nu = datetime.now(TZ); vandaag = nu.date()
     s = requests.Session(); s.headers["User-Agent"] = "NBL-portaal/1.0 (bezettingsoverzicht)"
     inloggen(s)
-
+ 
     # 1. Actuele stand
     j = bezetting(s, [vandaag])
     totals = sorted(j.get("TotalsOccupancy") or [], key=lambda t: t.get("OrderBy", 0))
@@ -143,7 +143,7 @@ def main():
     functies = [{"id": t["ServiceFunctionID"], "label": t["Label"], "beschikbaar": t["Available"],
                  "nodig": t["Necessary"], "totaal": t["Configured"]} for t in totals]
     ts = {f["id"]: f["nodig"] for f in functies if f["nodig"] > 0}
-
+ 
     # Streefsterkte (volwaardige TS) en aspirant, op functielabel — los van Pre-Com's 'nodig' (= ondergrens).
     # Ondergrens = 4 (bevelvoerder, chauffeur, 2 manschappen), komt uit Pre-Com (nodig).
     # Streefsterkte = 6 (bevelvoerder, chauffeur, 4 manschappen); volledig = streefsterkte + 1 aspirant.
@@ -155,7 +155,7 @@ def main():
     for f in functies:
         f["streef"] = STREEF.get(f["label"], ASP.get(f["label"], 0))
     volg = set(ts) | set(streef) | set(asp)
-
+ 
     # functie-id's voor de bezettingsgraad (5 niveaus)
     id_bev = next((f["id"] for f in functies if f["label"] == "Bevelvoerder"), None)
     id_chf = next((f["id"] for f in functies if f["label"] == "Chauffeur TS"), None)
@@ -177,12 +177,13 @@ def main():
     # De naam-parse hierboven reproduceert exact Pre-Com's eigen telling (gevalideerd tegen de
     # live DetailsOccupancy/TotalsOccupancy), dus namen en aantallen kloppen per definitie met elkaar.
     nu_namen = parse_namen_nu(j.get("DetailsOccupancy") or "", _now_pct)
-
+ 
     # 2. Vooruitblik: per kwartier of de TS de komende periode op ondergrens én op streefsterkte kan uitrukken
     toekomst = [vandaag + timedelta(days=i) for i in range(0, DAGEN)]
     ok = [[0] * 24 for _ in range(7)]; tot = [[0] * 24 for _ in range(7)]   # ondergrens
     ok_s = [[0] * 24 for _ in range(7)]                                      # streefsterkte
-    ok_f = {fid: 0 for fid in ts}; n_slots = 0
+    ok_f = {fid: 0 for fid in streef}; n_slots = 0        # dekking per rol: t.o.v. de STREEFSTERKTE
+    som_f = {fid: [[0] * 24 for _ in range(7)] for fid in streef}   # gem. beschikbaar per rol, per weekdag/uur
     n_ond = n_str = n_sas = 0                                                # kwartieren die elke sterkte halen
     tier_tot = [0, 0, 0, 0, 0]                                               # kwartieren per niveau (komende week)
     tier_tot_vandaag = [0, 0, 0, 0, 0]                                       # kwartieren per niveau (vandaag)
@@ -206,9 +207,10 @@ def main():
                 ok[wd][slot // 4] += bezet
                 ok_s[wd][slot // 4] += bezet_s
                 n_slots += 1; n_ond += bezet; n_str += bezet_s; n_sas += bezet_a
-                for fid, n in ts.items():
+                for fid, n in streef.items():
                     if av(fid) >= n:
                         ok_f[fid] += 1
+                    som_f[fid][wd][slot // 4] += av(fid)
                 t = tier_van(av(id_bev) if id_bev else 0, av(id_chf) if id_chf else 0,
                              av(id_man) if id_man else 0, av(id_asp) if id_asp else 0)
                 tier_tot[t] += 1; tier_som[wd][slot // 4] += t
@@ -217,10 +219,17 @@ def main():
     heatmap_streef = [[round(100 * ok_s[d][u] / tot[d][u]) if tot[d][u] else None for u in range(24)] for d in range(7)]
     heatmap_tier   = [[round(10 * tier_som[d][u] / tot[d][u]) / 10 if tot[d][u] else None for u in range(24)] for d in range(7)]
     alle_ok = sum(map(sum, ok)); alle = sum(map(sum, tot))
-    # Dekking per functie over de hele periode (ondergrens); de laagste is de 'smalste schakel'.
+    # Dekking per functie over de hele periode t.o.v. de STREEFSTERKTE (vol: 1 bevelvoerder,
+    # 1 chauffeur, 4 manschappen); de laagste is de 'smalste schakel' — zo zie je welke rol de
+    # volwaardige bezetting tegenhoudt (meestal Manschap, i.p.v. altijd 100% op de ondergrens).
     dekking_per_rol = sorted(
-        ({"label": labels.get(fid, str(fid)), "pct": round(100 * ok_f[fid] / n_slots)} for fid in ts),
+        ({"label": labels.get(fid, str(fid)), "pct": round(100 * ok_f[fid] / n_slots), "eis": streef[fid]} for fid in streef),
         key=lambda r: r["pct"]) if n_slots else []
+    # Gemiddeld aantal beschikbaar per rol, per weekdag/uur — om bij de krapste momenten te tonen
+    # welke functie(s) dan tekortkomen t.o.v. de streefsterkte.
+    heatmap_rol = {labels[fid]: {"eis": streef[fid],
+                   "grid": [[round(som_f[fid][d][u] / tot[d][u], 1) if tot[d][u] else None for u in range(24)] for d in range(7)]}
+                   for fid in streef}
     pct = lambda x: round(100 * x / n_slots) if n_slots else None
     sterkte = {
         "ondergrens": {"eis": 4, "pct": pct(n_ond)},
@@ -230,7 +239,7 @@ def main():
     _nv = sum(tier_tot_vandaag)
     _pctv = lambda x: round(100 * x / _nv) if _nv else None
     tier_verdeling = [{"tier": i, "label": _tlab[i], "pct": _pctv(n)} for i, n in enumerate(tier_tot_vandaag)]
-
+ 
     uit = {
         "bron": "Pre-Com",
         "bijgewerkt": nu.strftime("%Y-%m-%dT%H:%M"),
@@ -245,6 +254,7 @@ def main():
         "tier_verdeling": tier_verdeling,
         "sterkte": sterkte,
         "dekking_per_rol": dekking_per_rol,
+        "heatmap_rol": heatmap_rol,
     }
     with open(UIT, "w", encoding="utf-8") as fh:
         fh.write("/* Automatisch gegenereerd uit Pre-Com. Niet handmatig bewerken. */\n")
@@ -252,7 +262,8 @@ def main():
     print("OK:", ", ".join(f"{f['label']} {f['beschikbaar']}/{f['nodig']}" for f in functies),
           f"| ondergrens {sterkte['ondergrens']['pct']}% · streefsterkte {sterkte['streef']['pct']}%"
           f" · +asp {sterkte['streef_asp']['pct']}% over {DAGEN} dagen")
-
-
+ 
+ 
 if __name__ == "__main__":
     main()
+ 
