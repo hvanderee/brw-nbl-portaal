@@ -39,15 +39,16 @@ async function haalCorrecties(){
   try{
     const [{ data: deel }, { data: verb }] = await Promise.all([
       supabase.from('uitruk_deelnemers').select('user_id,opkomst,rol,incident:uitruk_incidenten(begin_op,tijd_bekend,prioriteit,melding,straat,plaats)'),
-      supabase.from('uitruk_verbergen').select('user_id,gebeurtenis_id,eenheid_id'),
+      supabase.from('uitruk_verbergen').select('user_id,gebeurtenis_id,eenheid_id,opkomst'),
     ]);
     const toevoegen = (deel || []).filter(d => d.incident).map(d => ({
       user_id:d.user_id, opkomst:d.opkomst, rol:d.rol,
       begin_op:d.incident.begin_op, tijd_bekend:d.incident.tijd_bekend, prioriteit:d.incident.prioriteit,
       melding:d.incident.melding, straat:d.incident.straat, plaats:d.incident.plaats,
     }));
-    const verwijderen = (verb || []).map(v => ({ user_id:v.user_id, gebeurtenis_id:v.gebeurtenis_id, eenheid_id:v.eenheid_id }));
-    return { toevoegen, verwijderen };
+    const verwijderen = (verb || []).filter(v => v.opkomst == null).map(v => ({ user_id:v.user_id, gebeurtenis_id:v.gebeurtenis_id, eenheid_id:v.eenheid_id }));
+    const overschrijven = (verb || []).filter(v => v.opkomst != null).map(v => ({ user_id:v.user_id, gebeurtenis_id:v.gebeurtenis_id, eenheid_id:v.eenheid_id, opkomst:v.opkomst }));
+    return { toevoegen, verwijderen, overschrijven };
   }catch(e){ return { toevoegen:[], verwijderen:[] }; }
 }
 
@@ -71,6 +72,14 @@ async function laadMijnUitrukken(){
     // regels, dus het VP-id leiden we af uit de eerste eigen regel.
     const alle = await haalCorrecties();
     const uid = rijen.length ? rijen[0].user_id : null;
+    // Opkomst-overschrijvingen uit Beheer op de eigen VP-regels toepassen (zelfde bron als de aggregatie).
+    for(const ov of (alle.overschrijven||[])){
+      if(uid==null || String(ov.user_id)!==String(uid)) continue;
+      for(const r of rijen){
+        const g = r.incident && r.incident.gebeurtenis_id;
+        if(String(g)===String(ov.gebeurtenis_id) && (ov.eenheid_id==null || String(r.eenheid_id)===String(ov.eenheid_id))) r.opkomst = ov.opkomst;
+      }
+    }
     const corr = (uid == null) ? { toevoegen:[], verwijderen:[] } : {
       toevoegen:  (alle.toevoegen  || []).filter(t => String(t.user_id) === String(uid)),
       verwijderen:(alle.verwijderen|| []).filter(v => String(v.user_id) === String(uid)),
@@ -482,15 +491,17 @@ function renderUitrukken(){
 function renderVerbergen(){
   const body = $('#verb-body'); if(!body) return;
   const lijst = verbergen.filter(v => !uitrukFilter || String(v.user_id) === String(uitrukFilter));
-  $('#verb-telt').textContent = lijst.length + (lijst.length === 1 ? ' regel' : ' regels');
+  $('#verb-telt').textContent = lijst.length + (lijst.length === 1 ? ' correctie' : ' correcties');
   if(!lijst.length){
-    body.innerHTML = '<tr><td colspan="4" style="color:var(--slate)">Geen verborgen VP-regels.</td></tr>';
+    body.innerHTML = '<tr><td colspan="5" style="color:var(--slate)">Geen VP-correcties.</td></tr>';
     return;
   }
+  const corrLabel = o => o==null||o===''? 'Verbergen' : o==3? 'Mee op TS' : o==4? 'Opgekomen, niet mee' : o==1? 'Niet opgekomen' : String(o);
   body.innerHTML = lijst.map(v => `<tr>
     <td>${esc(ledLabel(v.user_id))}</td>
     <td>${esc(v.gebeurtenis_id)}</td>
     <td>${v.eenheid_id ? esc(v.eenheid_id) : '<span class="dim">hele incident</span>'}</td>
+    <td>${esc(corrLabel(v.opkomst))}</td>
     <td><div class="acties"><button class="knop-rand" data-vedit="${v.id}">Bewerken</button><button class="knop-rand rood" data-vdel="${v.id}">Verwijderen</button></div></td></tr>`).join('');
   body.querySelectorAll('[data-vedit]').forEach(b => b.onclick = () => openVerb(Number(b.dataset.vedit)));
   body.querySelectorAll('[data-vdel]').forEach(b => b.onclick = () => verwijderVerb(Number(b.dataset.vdel)));
@@ -592,10 +603,11 @@ async function verwijderInc(id){
 function openVerb(id){
   const v = id ? verbergen.find(x => x.id === id) : null;
   $('#vm-id').value  = v ? v.id : '';
-  $('#vm-titel').textContent = v ? 'Verborgen VP-regel bewerken' : 'VP-regel verbergen';
+  $('#vm-titel').textContent = v ? 'VP-correctie bewerken' : 'VP-correctie';
   $('#vm-lid').value = v ? String(v.user_id) : ($('#vm-lid').options[0] ? $('#vm-lid').options[0].value : '');
   $('#vm-gid').value = v ? (v.gebeurtenis_id||'') : '';
   $('#vm-eenheid').value = v ? (v.eenheid_id||'') : '';
+  $('#vm-correctie').value = v && v.opkomst != null ? String(v.opkomst) : '';
   melding('#vm-status','');
   $('#overlay-verb').hidden = false;
   $('#vm-lid').focus();
@@ -611,7 +623,7 @@ bind('#f-verb', 'submit', async e => {
   if(!user_id){ melding('#vm-status','Kies eerst een ploeglid.', 'fout'); return; }
   const gid = $('#vm-gid').value.trim();
   if(!gid){ melding('#vm-status','Gebeurtenis-id is verplicht.', 'fout'); return; }
-  const rij = { id: $('#vm-id').value || null, user_id: Number(user_id), gebeurtenis_id: gid, eenheid_id: $('#vm-eenheid').value.trim() };
+  const rij = { id: $('#vm-id').value || null, user_id: Number(user_id), gebeurtenis_id: gid, eenheid_id: $('#vm-eenheid').value.trim(), opkomst: $('#vm-correctie').value };
   $('#vm-opslaan').disabled = true; melding('#vm-status','Opslaan…');
   const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'verb_save', rij } });
   $('#vm-opslaan').disabled = false;
@@ -622,7 +634,7 @@ bind('#f-verb', 'submit', async e => {
 
 async function verwijderVerb(id){
   const v = verbergen.find(x => x.id === id); if(!v) return;
-  if(!confirm('Deze verberg-regel verwijderen? De VP-regel verschijnt dan weer in “Mijn uitrukken”.')) return;
+  if(!confirm('Deze VP-correctie verwijderen? De oorspronkelijke VP-registratie telt dan weer mee.')) return;
   const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'verb_del', id } });
   if(error || !data || !data.ok){ melding('#verb-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
   await laadUitrukken(); ververAggregaten();
