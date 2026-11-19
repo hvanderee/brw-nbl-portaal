@@ -291,29 +291,39 @@ function widgets(){
     const vs=[];
     HMW.forEach((rij,d)=>{ let st=null;
       for(let u=0;u<=24;u++){ const v=u<24?rij[u]:null; const bad = tierMode ? (v!=null&&v<2) : (v!=null&&v<100);
-        if(bad&&st==null)st=u; else if(!bad&&st!=null){ const seg=rij.slice(st,u).filter(x=>x!=null); vs.push([DAG[d],st,u,Math.min(...seg)]); st=null; } } });
+        if(bad&&st==null)st=u; else if(!bad&&st!=null){ const seg=rij.slice(st,u).filter(x=>x!=null); vs.push([DAG[d],st,u,Math.min(...seg),d]); st=null; } } });
     vs.sort((a,b)=>a[3]-b[3]);
+    // Per krap venster: welke functie(s) komen tekort t.o.v. de streefsterkte? (gem. beschikbaar < eis)
+    const RH = B.heatmap_rol || null;
+    const tekortTekst = (d,a,b)=>{
+      if(!RH) return '';
+      const uit=[];
+      for(const lab in RH){ const g=RH[lab].grid, eis=RH[lab].eis; let mn=Infinity;
+        for(let u=a;u<b;u++){ const x=g&&g[d]&&g[d][u]; if(x!=null && x<mn) mn=x; }
+        if(mn!==Infinity && mn<eis) uit.push(`${lab} <b>${String(mn).replace('.',',')}/${eis}</b>`);
+      }
+      return uit.length ? `<small class="venster-rol">Tekort: ${uit.join(' · ')}</small>` : '';
+    };
     const vb=$("#vensters");
     if(vb) vb.innerHTML = vs.length
-      ? '<p class="uitleg" style="margin:16px 0 8px">Krapste momenten komende periode</p><ul class="vensters">'+vs.slice(0,5).map(([d,a,b,lo])=>`<li><span>${d} ${String(a).padStart(2,"0")}:00–${String(b).padStart(2,"0")}:00</span><span class="pct">${tierMode?TIERNAAM[Math.round(lo)]:lo+"%"}</span></li>`).join("")+'</ul>'
+      ? '<p class="uitleg" style="margin:16px 0 8px">Krapste momenten komende periode</p><ul class="vensters">'+vs.slice(0,5).map(([d,a,b,lo,di])=>`<li><div class="venster-kop"><span>${d} ${String(a).padStart(2,"0")}:00–${String(b).padStart(2,"0")}:00</span><span class="pct">${tierMode?TIERNAAM[Math.round(lo)]:lo+"%"}</span></div>${tekortTekst(di,a,b)}</li>`).join("")+'</ul>'
       : `<p class="geen" style="margin-top:16px"><b>Geen krappe momenten.</b> ${tierMode?"De post haalt de hele periode minstens krapte-sterkte.":"De TS is de hele periode volledig bezet."}</p>`;
   }
   if(B&&B.dekking_per_rol&&B.dekking_per_rol.length){
     const _r=B.dekking_per_rol,_mn=Math.min(..._r.map(x=>x.pct)),_mx=Math.max(..._r.map(x=>x.pct));
     const _minIdx=_r.reduce((mi,x,i,a)=> x.pct<a[mi].pct?i:mi, 0);
     balken("perRol",_r.map(r=>[r.label,r.pct]),{smalIndex:(_mn<_mx?_minIdx:-1),suffix:"%"});
-    // Conclusie onderaan: welke functie(s) komen de komende periode te kort (halen niet altijd de ondergrens).
+    // Conclusie onderaan: welke functie(s) komen de komende periode te kort (niet altijd volledig bezet).
     const slot=$("#rol-tekort");
     if(slot){
       const kort=_r.filter(r=>r.pct<100).slice().sort((a,b)=>a.pct-b.pct);
-      slot.hidden=false;
       if(!kort.length){
-        slot.className="paraat-slot ok";
-        slot.innerHTML=`<b>Geen knelpunt.</b> Elke functie haalt de komende periode steeds de ondergrens.`;
+        slot.hidden=true;   // geen knelpunt: niets tonen i.p.v. een loze "geen knelpunt"-regel
       }else{
+        slot.hidden=false;
         const smal=kort[0], rest=kort.slice(1);
         slot.className="paraat-slot tekort";
-        slot.innerHTML=`<b>Smalste schakel: ${smal.label}</b> — haalt de ondergrens maar ${smal.pct}% van de tijd`
+        slot.innerHTML=`<b>Smalste schakel: ${smal.label}</b> — maar ${smal.pct}% van de tijd volledig bezet`
           + (rest.length?`. Ook krap: ${rest.map(r=>`${r.label} (${r.pct}%)`).join(", ")}.`:`.`);
       }
     }
