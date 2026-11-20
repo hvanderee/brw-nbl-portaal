@@ -291,6 +291,11 @@ td .em{color:var(--slate);font-size:13px}
 #app table.besch{font-size:14px}
 #app table.besch th,#app table.besch td{white-space:nowrap;padding:13px 16px;font-variant-numeric:tabular-nums}
 #app table.besch th{vertical-align:bottom;line-height:1.25}
+/* Mijn-uitrukken-tabel: Melding/Locatie mogen afbreken en de plaats komt onder de straat, zodat alle
+   kolommen (ook Opkomst) binnen de kaart passen — ook bij langere plaatsnamen (Hekelingen, Spijkenisse…). */
+#view-mijn table.besch th,#view-mijn table.besch td{padding:12px 12px}
+#view-mijn table.besch td:nth-child(3),#view-mijn table.besch td:nth-child(4){white-space:normal;overflow-wrap:anywhere}
+#view-mijn table.besch td:nth-child(4) .pct{display:block;margin-left:0;margin-top:2px}
 #app table.besch th span{display:block;font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--dim);margin-top:3px}
 #app table.besch th.sortbaar{cursor:pointer;user-select:none;-webkit-user-select:none}
 #app table.besch th.sortbaar:hover{color:var(--ink)}
