@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/styles.css?v=20261118l">
+<link rel="stylesheet" href="css/styles.css?v=20261118o">
 </head>
 <body>
 
@@ -351,6 +351,24 @@
           </table>
         </div>
       </section>
+
+      <section class="sectie" id="typecorr-blok">
+        <div class="sk">
+          <h3>Type-correcties</h3>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <span class="telt" id="typecorr-telt"></span>
+            <button class="knop-klein" id="nieuw-typecorr">+ Type-correctie</button>
+          </div>
+        </div>
+        <p class="uitleg">Corrigeer de meldingsclassificatie van een VP-incident dat in VP verkeerd staat (bv. een gaslek dat als “Ongeval › Overig” is geregistreerd). Eén regel per gebeurtenis-id; werkt door in het Meldingstypen-overzicht.</p>
+        <div class="melding" id="typecorr-melding" role="status" aria-live="polite"></div>
+        <div class="tabelwrap">
+          <table class="besch">
+            <thead><tr><th>Gebeurtenis-id</th><th>Hoofdcategorie</th><th>Subtype</th><th></th></tr></thead>
+            <tbody id="typecorr-body"></tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </main>
 
@@ -416,6 +434,14 @@
         <div><label for="im-straat">Straat</label><input id="im-straat" type="text" placeholder="bijv. Handelstraat"></div>
         <div><label for="im-plaats">Plaats</label><input id="im-plaats" type="text" placeholder="bijv. Nieuw-Beijerland"></div>
       </div>
+      <div class="veld2">
+        <div><label for="im-hoofd">Type melding</label><select id="im-hoofd">
+          <option value="">— automatisch uit melding —</option>
+          <option>Brand</option><option>Alarm</option><option>Ongeval</option>
+          <option>Gezondheid</option><option>Leefmilieu</option><option>Dienstverlening</option>
+        </select></div>
+        <div><label for="im-sub">Subtype</label><select id="im-sub" disabled><option value="">—</option></select></div>
+      </div>
 
       <label style="margin-top:18px">Ploegleden <span class="van">— laat op “—” staan wie niet bij deze uitruk hoort</span></label>
       <div class="deel-kop"><span>Naam</span><span>Status</span><span>Functie</span></div>
@@ -457,13 +483,37 @@
   </div>
 </div>
 
+<!-- Modal: type-correctie (classificatie van een VP-incident) -->
+<div class="overlay" id="overlay-typecorr" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="tc-titel">
+    <h3 id="tc-titel">Type-correctie</h3>
+    <p class="sub">Geef een VP-incident de juiste meldingsclassificatie. Werkt door in het Meldingstypen-overzicht.</p>
+    <form id="f-typecorr">
+      <div><label for="tc-gid">Gebeurtenis-id</label><input id="tc-gid" type="text" inputmode="numeric" placeholder="bijv. 66635167"></div>
+      <div class="veld2" style="margin-top:12px">
+        <div><label for="tc-hoofd">Hoofdcategorie</label><select id="tc-hoofd" required>
+          <option value="">— kies —</option>
+          <option>Brand</option><option>Alarm</option><option>Ongeval</option>
+          <option>Gezondheid</option><option>Leefmilieu</option><option>Dienstverlening</option>
+        </select></div>
+        <div><label for="tc-sub">Subtype</label><select id="tc-sub" disabled><option value="">—</option></select></div>
+      </div>
+      <div class="modal-actie">
+        <button type="button" class="knop annuleer" id="tc-annuleer">Annuleren</button>
+        <button type="submit" class="knop" id="tc-opslaan">Opslaan</button>
+      </div>
+      <div class="melding" id="tc-status" role="status" aria-live="polite"></div>
+    </form>
+  </div>
+</div>
+
 <div class="tip" id="tip" hidden></div>
 
-<script src="data.js?v=20261118l"></script>
-<script src="bezetting.js?v=20261118l"></script>
-<script src="beschikbaarheid.js?v=20261118l"></script>
-<script src="js/config.js?v=20261118l"></script>
-<script src="js/dashboard.js?v=20261118l"></script>
-<script type="module" src="js/auth.js?v=20261118l"></script>
+<script src="data.js?v=20261118o"></script>
+<script src="bezetting.js?v=20261118o"></script>
+<script src="beschikbaarheid.js?v=20261118o"></script>
+<script src="js/config.js?v=20261118o"></script>
+<script src="js/dashboard.js?v=20261118o"></script>
+<script type="module" src="js/auth.js?v=20261118o"></script>
 </body>
 </html>
