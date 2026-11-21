@@ -201,6 +201,7 @@ async function laadAggregaten(){
       if(P.uitruktijd_spreiding && P.uitruktijd_spreiding.n) D.uitruktijd_spreiding = P.uitruktijd_spreiding;
       if(P.opkomst && P.opkomst.verdeling && P.opkomst.verdeling.length) D.opkomst = P.opkomst;
       if(P.meldingstypen && P.meldingstypen.length) D.meldingstypen = P.meldingstypen;
+      if(P.meldingstypen_groepen && P.meldingstypen_groepen.length) D.meldingstypen_groepen = P.meldingstypen_groepen;
       // Recente uitrukken pas live tonen zodra er echte uitruktijden in zitten (niet allemaal "–").
       if(P.recente_uitrukken && P.recente_uitrukken.length && P.recente_uitrukken.some(r=>r[4] && r[4]!=='–')) D.recente_uitrukken = P.recente_uitrukken;
       // #3: plaatsen (TS/VEB) live.
@@ -426,6 +427,7 @@ async function verwijderLid(id){
 /* ============ HANDMATIGE UITRUKKEN OP UITRUK-NIVEAU (BEHEER) ============ */
 let incidenten = [];
 let verbergen = [];
+let typecorrecties = [];
 let uitrukFilter = '';
 const OPK_LABEL = { 3:'Uitgerukt', 4:'Kazerne', 1:'Niet opgekomen' };
 const ROLLEN = ['Bevelvoerder','Chauffeur TS','Chauffeur VEB','Manschap','Aspirant Manschap'];
@@ -447,16 +449,21 @@ function vulBeheerSelects(){
 
 async function laadUitrukken(){
   melding('#uitruk-melding',''); melding('#verb-melding','');
-  const [{ data: inc, error: e1 }, { data: verb, error: e2 }] = await Promise.all([
+  melding('#typecorr-melding','');
+  const [{ data: inc, error: e1 }, { data: verb, error: e2 }, { data: tc, error: e3 }] = await Promise.all([
     supabase.from('uitruk_incidenten').select('*, deelnemers:uitruk_deelnemers(user_id,opkomst,rol)').order('begin_op', { ascending:false, nullsFirst:false }),
     supabase.from('uitruk_verbergen').select('*').order('id', { ascending:true }),
+    supabase.from('uitruk_type_correctie').select('*').order('aangepast_op', { ascending:false }),
   ]);
   if(e1){ melding('#uitruk-melding', vertaalFout(e1.message), 'fout'); return; }
   if(e2){ melding('#verb-melding', vertaalFout(e2.message), 'fout'); }
+  if(e3){ melding('#typecorr-melding', vertaalFout(e3.message), 'fout'); }
   incidenten = inc || [];
   verbergen = verb || [];
+  typecorrecties = tc || [];
   renderUitrukken();
   renderVerbergen();
+  renderTypecorr();
 }
 
 function renderUitrukken(){
@@ -537,6 +544,26 @@ function bouwDeelGrid(statusPerUid){
   for(const uid in statusPerUid){ const st = statusPerUid[uid]; if(st.rol){ const r = $('#im-deel .deel-rol[data-uid="'+uid+'"]'); if(r){ r.disabled = String(st.opkomst)!=='3'; r.value = st.rol; } } }
 }
 
+// Subtypen per hoofdcategorie voor handmatige uitrukken. Nette labels, gelijk aan de VP-labels na
+// opschoning (zie SUBLABEL in de aggregatie), zodat handmatige en VP-regels onder dezelfde noemer vallen.
+const SUBTYPEN = {
+  Brand: ['Buitenbrand','Gebouwbrand','Bijgebouwbrand','Voertuigbrand','Scheepsbrand','Schoorsteenbrand','Specifiek object','Overig'],
+  Alarm: ['Automatische melding (OMS)','Luid/optisch alarm','Overig'],
+  Ongeval: ['Verkeersongeval','Beknelling/letsel','Ongeval te water','Overig'],
+  Gezondheid: ['Reanimatie/AED','Assistentie ambulance','Tilassistentie','Overig'],
+  Leefmilieu: ['Gaslek','Stank-/luchthinder','Water-/weeroverlast','Olie/chemie','Overig'],
+  Dienstverlening: ['Dierhulpverlening','Brandweerassistentie','Wateroverlast','Liftopsluiting','Overig'],
+};
+function vulSubtypen(selSelector, hoofd, gekozen){
+  const sel = $(selSelector); const lijst = SUBTYPEN[hoofd];
+  if(!lijst){ sel.innerHTML = '<option value="">—</option>'; sel.value=''; sel.disabled = true; return; }
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">—</option>' + lijst.map(s => `<option${s===gekozen?' selected':''}>${s}</option>`).join('');
+  if(gekozen) sel.value = gekozen;
+}
+bind('#im-hoofd', 'change', () => vulSubtypen('#im-sub', $('#im-hoofd').value, ''));
+bind('#tc-hoofd', 'change', () => vulSubtypen('#tc-sub', $('#tc-hoofd').value, ''));
+
 function openInc(id){
   const i = id ? incidenten.find(x => x.id === id) : null;
   $('#im-id').value = i ? i.id : '';
@@ -552,6 +579,8 @@ function openInc(id){
   $('#im-melding').value = i ? (i.melding||'') : '';
   $('#im-straat').value  = i ? (i.straat||'') : '';
   $('#im-plaats').value  = i ? (i.plaats||'') : '';
+  $('#im-hoofd').value   = i ? (i.classificatie||'') : '';
+  vulSubtypen('#im-sub', $('#im-hoofd').value, i ? (i.sub_classificatie||'') : '');
   const statusPerUid = {};
   if(i){ for(const d of (i.deelnemers||[])) statusPerUid[String(d.user_id)] = { opkomst:d.opkomst, rol:d.rol }; }
   bouwDeelGrid(statusPerUid);
@@ -573,7 +602,9 @@ bind('#f-inc', 'submit', async e => {
   const begin = new Date(`${datum}T${bekend ? tijd : '00:00'}`);
   const incident = { id: $('#im-id').value || null, begin_op: begin.toISOString(), tijd_bekend: bekend,
     prioriteit: $('#im-prio').value, melding: $('#im-melding').value.trim(),
-    straat: $('#im-straat').value.trim(), plaats: $('#im-plaats').value.trim() };
+    straat: $('#im-straat').value.trim(), plaats: $('#im-plaats').value.trim(),
+    classificatie: $('#im-hoofd').value || null,
+    sub_classificatie: ($('#im-hoofd').value && $('#im-sub').value) ? $('#im-sub').value : null };
   const deelnemers = [];
   $('#im-deel').querySelectorAll('.deel-rij').forEach(rij => {
     const opk = rij.querySelector('.deel-opk').value;
@@ -637,6 +668,61 @@ async function verwijderVerb(id){
   if(!confirm('Deze VP-correctie verwijderen? De oorspronkelijke VP-registratie telt dan weer mee.')) return;
   const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'verb_del', id } });
   if(error || !data || !data.ok){ melding('#verb-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
+  await laadUitrukken(); ververAggregaten();
+}
+
+/* --- Type-correcties (classificatie van VP-incidenten) --- */
+function renderTypecorr(){
+  const body = $('#typecorr-body'); if(!body) return;
+  const lijst = typecorrecties;
+  $('#typecorr-telt').textContent = lijst.length + (lijst.length === 1 ? ' correctie' : ' correcties');
+  if(!lijst.length){
+    body.innerHTML = '<tr><td colspan="4" style="color:var(--slate)">Geen type-correcties.</td></tr>';
+    return;
+  }
+  body.innerHTML = lijst.map(t => `<tr>
+    <td>${esc(t.gebeurtenis_id)}</td>
+    <td>${esc(t.classificatie||'–')}</td>
+    <td>${t.sub_classificatie ? esc(t.sub_classificatie) : '<span class="dim">–</span>'}</td>
+    <td><div class="acties"><button class="knop-rand" data-tedit="${t.gebeurtenis_id}">Bewerken</button><button class="knop-rand rood" data-tdel="${t.gebeurtenis_id}">Verwijderen</button></div></td></tr>`).join('');
+  body.querySelectorAll('[data-tedit]').forEach(b => b.onclick = () => openTypecorr(Number(b.dataset.tedit)));
+  body.querySelectorAll('[data-tdel]').forEach(b => b.onclick = () => verwijderTypecorr(Number(b.dataset.tdel)));
+}
+
+function openTypecorr(gid){
+  const t = gid ? typecorrecties.find(x => Number(x.gebeurtenis_id) === Number(gid)) : null;
+  $('#tc-titel').textContent = t ? 'Type-correctie bewerken' : 'Type-correctie';
+  $('#tc-gid').value   = t ? (t.gebeurtenis_id||'') : '';
+  $('#tc-gid').readOnly = !!t;
+  $('#tc-hoofd').value = t ? (t.classificatie||'') : '';
+  vulSubtypen('#tc-sub', $('#tc-hoofd').value, t ? (t.sub_classificatie||'') : '');
+  melding('#tc-status','');
+  $('#overlay-typecorr').hidden = false;
+  $('#tc-gid').focus();
+}
+function sluitTypecorr(){ $('#overlay-typecorr').hidden = true; }
+bind('#nieuw-typecorr', 'click', () => openTypecorr(null));
+bind('#tc-annuleer', 'click', sluitTypecorr);
+bind('#overlay-typecorr', 'click', e => { if(e.target === $('#overlay-typecorr')) sluitTypecorr(); });
+
+bind('#f-typecorr', 'submit', async e => {
+  e.preventDefault();
+  const gid = $('#tc-gid').value.trim();
+  if(!gid){ melding('#tc-status','Gebeurtenis-id is verplicht.', 'fout'); return; }
+  if(!$('#tc-hoofd').value){ melding('#tc-status','Kies een hoofdcategorie.', 'fout'); return; }
+  const rij = { gebeurtenis_id: gid, classificatie: $('#tc-hoofd').value, sub_classificatie: $('#tc-sub').value || '' };
+  $('#tc-opslaan').disabled = true; melding('#tc-status','Opslaan…');
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'typecorr_save', rij } });
+  $('#tc-opslaan').disabled = false;
+  if(error || !data || !data.ok){ melding('#tc-status', (data && data.error) || vertaalFout((error && error.message) || 'Opslaan mislukt.'), 'fout'); return; }
+  sluitTypecorr();
+  await laadUitrukken(); ververAggregaten();
+});
+
+async function verwijderTypecorr(gid){
+  if(!confirm('Deze type-correctie verwijderen? Het incident valt dan terug op de VP-classificatie.')) return;
+  const { data, error } = await supabase.functions.invoke('ploeg_beheer', { body:{ action:'typecorr_del', gebeurtenis_id: gid } });
+  if(error || !data || !data.ok){ melding('#typecorr-melding', (data && data.error) || vertaalFout((error && error.message) || 'Verwijderen mislukt.'), 'fout'); return; }
   await laadUitrukken(); ververAggregaten();
 }
 

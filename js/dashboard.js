@@ -102,8 +102,16 @@ function teken(){
     const boven = prio==="P1" && (m+sc/60)>D.norm.uitruktijd_min;
     return `<tr><td>${new Date(dt).toLocaleDateString("nl-NL",{day:"numeric",month:"short"}).replace(" ","&nbsp;")}<span class="pct">${tijd}</span></td><td><span class="prio ${prio}">${prio}</span></td><td>${mld}</td><td class="r ${boven?"boven":""}">${ut}</td><td class="r">${bez}</td></tr>`; }).join("");
 
-  const ty=[...D.meldingstypen].sort((a,b)=>b[1]-a[1]), mx=ty[0][1];
-  $("#typen").innerHTML = ty.map(([t,v])=>`<div class="type"><div class="rij"><span>${t}</span><b>${v}</b></div><div class="balk"><i style="width:${v/mx*100}%"></i></div></div>`).join("");
+  if(D.meldingstypen_groepen && D.meldingstypen_groepen.length){
+    // 2 niveaus: hoofdcategorie als kop, daaronder het specifieke subtype.
+    const G=D.meldingstypen_groepen, mxs=Math.max(1,...G.flatMap(g=>g.subs.map(s=>s.n)));
+    $("#typen").innerHTML = G.map(g=>`<div class="mt-groep"><div class="mt-hdr"><span>${g.hoofd}</span><b>${g.totaal}</b></div>`
+      + g.subs.map(s=>`<div class="mt-sub"><span class="mt-nm">${s.label}</span><span class="mt-bl"><i style="width:${Math.max(4,s.n/mxs*100)}%"></i></span><b>${s.n}</b></div>`).join("")
+      + `</div>`).join("");
+  } else if(D.meldingstypen && D.meldingstypen.length){
+    const ty=[...D.meldingstypen].sort((a,b)=>b[1]-a[1]), mx=ty[0][1];
+    $("#typen").innerHTML = ty.map(([t,v])=>`<div class="type"><div class="rij"><span>${t}</span><b>${v}</b></div><div class="balk"><i style="width:${v/mx*100}%"></i></div></div>`).join("");
+  }
 
   widgets();
   let t; addEventListener("resize",()=>{ clearTimeout(t); t=setTimeout(tekenGrafieken,120); });
