@@ -226,6 +226,18 @@ td .em{color:var(--slate);font-size:13px}
 #dash .type .rij{display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px}
 #dash .type .rij b{font-family:var(--font-display);font-weight:700;font-size:17px}
 #dash .type .balk i{background:var(--graphite)}
+/* Meldingstypen 2 niveaus: hoofdcategorie-kop + subtypen eronder */
+#dash .typen .mt-groep{display:block}
+#dash .typen .mt-groep+.mt-groep{margin-top:4px}
+#dash .mt-hdr{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px solid var(--ink);padding-bottom:6px}
+#dash .mt-hdr span{font-size:15px;font-weight:600}
+#dash .mt-hdr b{font-family:var(--font-display);font-weight:700;font-size:18px}
+#dash .mt-sub{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:13px;color:var(--slate)}
+#dash .mt-sub .mt-nm{flex:0 0 150px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dash .mt-sub .mt-bl{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+#dash .mt-sub .mt-bl i{display:block;height:100%;background:var(--dim);border-radius:3px}
+#dash .mt-sub b{flex:0 0 auto;min-width:22px;text-align:right;color:var(--ink);font-weight:700}
+@media(max-width:600px){#dash .mt-sub .mt-nm{flex-basis:110px}}
 #dash .duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 #dash .tegel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
 #dash .tegel .nm{font-size:13px;color:var(--slate);line-height:1.35}
